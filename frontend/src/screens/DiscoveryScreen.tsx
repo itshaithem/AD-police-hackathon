@@ -1,26 +1,29 @@
-import { BRANDS, HIGH_RISK_THRESHOLD, L, T, colorOf, type Filter } from '../data';
-import { feedOf, type Dashboard } from '../useDashboard';
+import { HIGH_RISK_THRESHOLD, L, T, colorOf, type Filter } from '../data';
+import type { Dashboard } from '../useDashboard';
 
 export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
-  const { state: s, set, runScan } = dash;
+  const { state: s, set, runScan, openScan, findings } = dash;
   const t = T[s.lang], ar = s.lang === 'ar', wide = !s.narrow;
 
   const ago = (m: number) => {
     if (m < 60) return ar ? `منذ ${m} دقيقة` : `${m} min ago`;
     const h = Math.round(m / 60);
+    if (h >= 48) { const d = Math.round(h / 24); return ar ? `منذ ${d} أيام` : `${d} d ago`; }
     return ar ? (h === 1 ? 'منذ ساعة' : h === 2 ? 'منذ ساعتين' : `منذ ${h} ساعات`) : `${h} h ago`;
   };
   const agoS = (sec: number) => (sec < 60 ? t.justNow : ago(Math.round(sec / 60)));
-  const srcLabel = { cert: t.cert, search: t.search, maps: t.mapsSrc };
+  const srcLabel = { cert: t.cert, search: t.search, maps: t.mapsSrc, lookalike: t.lookalike };
 
-  const rows = feedOf(s).filter(({ row: r }) =>
-    s.filter === 'all' || (s.filter === 'web' && r.kind === 'web') || (s.filter === 'maps' && r.kind === 'maps') || (s.filter === 'high' && r.score >= HIGH_RISK_THRESHOLD));
+  const rows = findings.filter((r) =>
+    s.filter === 'all' || (s.filter === 'web' && r.kind === 'web') || (s.filter === 'maps' && r.kind === 'maps')
+    || (s.filter === 'high' && (r.score ?? 0) >= HIGH_RISK_THRESHOLD));
 
+  const st = s.online ? s.apiStats : null;
   const liveHigh = s.live.filter((l) => l.row.score >= HIGH_RISK_THRESHOLD).length;
   const stats = [
-    { value: 47 + s.live.length, label: t.foundToday, color: '#1F1F1F' },
-    { value: 19 + liveHigh, label: t.highRisk, color: '#C8442F' },
-    { value: 11, label: t.brands, color: '#1F1F1F' },
+    { value: st ? st.found_today : 47 + s.live.length, label: t.foundToday, color: '#1F1F1F' },
+    { value: st ? st.high_risk : 19 + liveHigh, label: t.highRisk, color: '#C8442F' },
+    { value: st ? st.brands_targeted : 11, label: t.brands, color: '#1F1F1F' },
   ];
   const tabs: [Filter, string][] = [['all', t.all], ['web', t.websites], ['maps', t.maps], ['high', t.highRisk]];
 
@@ -36,10 +39,10 @@ export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
       </div>
 
       <div className="stats">
-        {stats.map((st) => (
-          <div className="stat" key={st.label}>
-            <span className="big-num" style={{ color: st.color }}>{st.value}</span>
-            <span className="label">{st.label}</span>
+        {stats.map((x) => (
+          <div className="stat" key={x.label}>
+            <span className="big-num" style={{ color: x.color }}>{x.value}</span>
+            <span className="label">{x.label}</span>
           </div>
         ))}
       </div>
@@ -56,11 +59,15 @@ export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
               <span>{t.colDomain}</span><span>{t.colBrand}</span><span>{t.colSource}</span><span>{t.colRisk}</span><span>{t.colTime}</span>
             </div>
           )}
-          {rows.map(({ row: r, sec }) => {
-            const brand = L(BRANDS[r.brand], s.lang), c = colorOf(r.score), time = agoS(sec), web = r.kind === 'web';
+          {rows.length === 0 && <div className="empty">{t.noFindings}</div>}
+          {rows.map((r) => {
+            const sec = Math.max(0, (s.now - r.detectedAt) / 1000);
+            const brand = L(r.brand, s.lang), time = agoS(sec), web = r.kind === 'web';
+            const c = r.score == null ? '#8A8A85' : colorOf(r.score);
             const sub = wide ? (web ? t.website : `${t.listing} · ${r.phone}`) : `${brand} · ${time}`;
+            const open = r.scanId ? () => openScan(r.scanId!) : web ? () => runScan(r.name) : undefined;
             return (
-              <div key={r.name} className={`table-row${web ? ' clickable' : ''}${sec < 5 ? ' flash' : ''}`} onClick={web ? () => runScan(r.name) : undefined}>
+              <div key={r.key} className={`table-row${open ? ' clickable' : ''}${sec < 5 ? ' flash' : ''}`} onClick={open}>
                 <div style={{ minWidth: 0 }}>
                   <div className="row-name">
                     <span>{r.name}</span>
@@ -70,7 +77,7 @@ export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
                 </div>
                 <span className="wide-only" style={{ fontSize: 14 }}>{brand}</span>
                 <span className="wide-only label" style={{ fontSize: 13 }}>{srcLabel[r.source]}</span>
-                <span className="risk-pill" style={{ color: c, borderColor: c + '66' }}>{r.score}</span>
+                <span className="risk-pill" style={{ color: c, borderColor: c + '66' }}>{r.score ?? '…'}</span>
                 <span className="wide-only label" style={{ fontSize: 13 }}>{time}</span>
               </div>
             );

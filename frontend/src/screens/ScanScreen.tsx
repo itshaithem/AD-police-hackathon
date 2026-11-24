@@ -1,12 +1,17 @@
-import { DETECTED_AT, GENERIC_RESULT, L, LEVEL_COLOR, RESULTS, SAMPLE_DOMAINS, SCAN_STEPS, T, levelOf } from '../data';
+import { useState } from 'react';
+import { api } from '../api';
+import { L, LEVEL_COLOR, SAMPLE_DOMAINS, SCAN_STEPS, T, levelOf, type Strings } from '../data';
 import type { Dashboard } from '../useDashboard';
+import type { ScanView, Shot } from '../views';
 
 const CIRC = 2 * Math.PI * 60;
+const LIVE_SAMPLES = ['http://saqrbank-secure-login.test/', 'http://saqrbank.test/r/abc', 'adcb.com', 'saqrbank.test'];
 
 export default function ScanScreen({ dash }: { dash: Dashboard }) {
-  const { state: s, set, runScan } = dash;
+  const { state: s, set, runScan, uploadCsv } = dash;
   const t = T[s.lang];
   const progress = `${Math.round(Math.min(1, (s.step + 0.5) / SCAN_STEPS.length) * 100)}%`;
+  const samples = s.online ? LIVE_SAMPLES : SAMPLE_DOMAINS;
 
   return (
     <div className="scan">
@@ -14,19 +19,16 @@ export default function ScanScreen({ dash }: { dash: Dashboard }) {
         <h1>{t.h1}</h1>
         <form className="scan-form" onSubmit={(e) => { e.preventDefault(); runScan(s.url); }}>
           <input value={s.url} onChange={(e) => set({ url: e.target.value })} placeholder={t.placeholder} spellCheck={false} aria-label={t.h1} />
-          <button type="submit" className="btn btn-primary">{t.scanBtn}</button>
+          <button type="submit" className="btn btn-primary" disabled={s.scanning}>{t.scanBtn}</button>
         </form>
         <div className="scan-hints">
           <div className="samples">
             <span>{t.try}</span>
-            {SAMPLE_DOMAINS.map((name) => (
-              <button key={name} type="button" className="link-btn" onClick={() => runScan(name)}>{name}</button>
+            {samples.map((name) => (
+              <button key={name} type="button" className="link-btn" onClick={() => runScan(name)}>{name.replace(/^https?:\/\//, '')}</button>
             ))}
           </div>
-          <label className="csv-label">
-            <input type="file" accept=".csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) set({ csvName: f.name }); }} />
-            {s.csvName ? `${s.csvName} — ${t.queued}` : t.csv}
-          </label>
+          <CsvControl dash={dash} onFile={uploadCsv} />
         </div>
       </div>
 
@@ -52,24 +54,69 @@ export default function ScanScreen({ dash }: { dash: Dashboard }) {
         </section>
       )}
 
-      {s.result && <Result dash={dash} domain={s.result} />}
+      {s.scanError && (
+        <section className="card scan-progress" role="alert">
+          <span className="label">{t.scanFailed}</span>
+          <span style={{ fontSize: 15 }}>{s.scanError}</span>
+        </section>
+      )}
+
+      {s.scan && !s.scanning && <Result dash={dash} view={s.scan} />}
     </div>
   );
 }
 
-function Result({ dash, domain }: { dash: Dashboard; domain: string }) {
-  const { state: s, set } = dash;
+function CsvControl({ dash, onFile }: { dash: Dashboard; onFile: (f: File) => void }) {
+  const { state: s } = dash;
+  const t = T[s.lang], b = s.batch;
+  if (b) {
+    return b.status === 'done'
+      ? <a className="csv-label" href={api.file(`/api/jobs/${b.jobId}/csv`)} download>{`${t.batchDone} · ${b.total} — ${t.downloadCsv}`}</a>
+      : <span className="label" style={{ fontSize: 13 }}>{`${t.batchRunning}: ${b.done} / ${b.total}${b.status === 'error' ? ' ✕' : ''}`}</span>;
+  }
+  return (
+    <label className="csv-label">
+      <input type="file" accept=".csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
+      {s.csvName ? `${s.csvName} — ${t.queued}` : t.csv}
+    </label>
+  );
+}
+
+const shotLabel = (sh: Shot, t: Strings) =>
+  sh.kind === 'suspicious' ? t.suspPage : sh.kind === 'scanned' ? t.scannedPage : sh.kind === 'real' ? t.realPage : t.step;
+
+function ShotFrame({ sh, brand, urlColor, t, lang }: { sh: Shot; brand: string; urlColor: string; t: Strings; lang: 'en' | 'ar' }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <figure className="shot">
+      <div className="shot-head"><span>{shotLabel(sh, t)}</span><span>{L(sh.note, lang)}</span></div>
+      <div className="shot-frame">
+        <div className="shot-url" dir="ltr" style={{ color: urlColor }}>{sh.url}</div>
+        {sh.img && !broken ? (
+          <img className="shot-img" src={sh.img} alt={`${shotLabel(sh, t)}: ${sh.url}`} loading="lazy" onError={() => setBroken(true)} />
+        ) : (
+          <div className="shot-page">
+            <span className="shot-brand">{brand}</span>
+            <span className="shot-field" />
+            <span className="shot-field" />
+            <span className="shot-field btn-like" />
+          </div>
+        )}
+      </div>
+    </figure>
+  );
+}
+
+function Result({ dash, view: r }: { dash: Dashboard; view: ScanView }) {
+  const { state: s, download, addToCase } = dash;
   const t = T[s.lang];
-  const r = RESULTS[domain] ?? GENERIC_RESULT;
   const lv = levelOf(r.score), c = LEVEL_COLOR[lv];
   const restOp = s.shown > r.reasons.length ? 1 : 0;
-
-  const shots = [{ label: lv === 'safe' ? t.scannedPage : t.suspPage, url: domain, urlColor: lv === 'safe' ? '#1F1F1F' : c, note: `${t.captured} 14:02` }];
-  if (r.real) shots.push({ label: t.realPage, url: r.real, urlColor: '#1F1F1F', note: t.official });
-
   const facts: [string, string][] = [
-    [t.domainAge, L(r.age, s.lang)], [t.hosting, L(r.country, s.lang)], [t.ip, r.ip], [t.registrar, r.reg], [t.detected, L(DETECTED_AT, s.lang)],
+    [t.domainAge, L(r.facts.age, s.lang)], [t.hosting, L(r.facts.country, s.lang)], [t.ip, r.facts.ip],
+    [t.registrar, r.facts.registrar], [t.detected, L(r.facts.detected, s.lang)],
   ];
+  const addedLabel = s.addedTo ? `${t.added.replace(/AD-\d+$/, '')}${s.addedTo}` : t.addCase;
 
   return (
     <section className="card result">
@@ -91,7 +138,7 @@ function Result({ dash, domain }: { dash: Dashboard; domain: string }) {
 
         <div className="result-body">
           <div className="stack-8" style={{ gap: 4 }}>
-            <span className="result-domain">{domain}</span>
+            <span className="result-domain">{r.domain}</span>
             <p className="result-line" style={{ opacity: restOp }}>{L(r.line, s.lang)}</p>
             <span className="label" style={{ marginTop: 14 }}>{lv === 'safe' ? t.whySafe : t.why}</span>
           </div>
@@ -106,22 +153,14 @@ function Result({ dash, domain }: { dash: Dashboard; domain: string }) {
         </div>
       </div>
 
-      <div className="shots fade" style={{ opacity: restOp }}>
-        {shots.map((sh) => (
-          <figure className="shot" key={sh.url + sh.label}>
-            <div className="shot-head"><span>{sh.label}</span><span>{sh.note}</span></div>
-            <div className="shot-frame">
-              <div className="shot-url" dir="ltr" style={{ color: sh.urlColor }}>{sh.url}</div>
-              <div className="shot-page">
-                <span className="shot-brand">{r.brand}</span>
-                <span className="shot-field" />
-                <span className="shot-field" />
-                <span className="shot-field btn-like" />
-              </div>
-            </div>
-          </figure>
-        ))}
-      </div>
+      {r.shots.length > 0 && (
+        <div className="shots fade" style={{ opacity: restOp }}>
+          {r.shots.map((sh, i) => (
+            <ShotFrame key={i} sh={sh} brand={r.brandLabel} t={t} lang={s.lang}
+              urlColor={sh.kind === 'suspicious' || sh.kind === 'step' ? c : '#1F1F1F'} />
+          ))}
+        </div>
+      )}
 
       <dl className="facts" style={{ opacity: restOp, transition: 'opacity .6s .15s' }}>
         {facts.map(([label, value]) => (
@@ -130,8 +169,8 @@ function Result({ dash, domain }: { dash: Dashboard; domain: string }) {
       </dl>
 
       <div className="actions" style={{ opacity: restOp, transition: 'opacity .6s .3s' }}>
-        <button className="btn btn-primary" onClick={() => set({ downloaded: true })}>{s.downloaded ? t.downloaded : t.download}</button>
-        <button className="btn btn-secondary" onClick={() => set({ added: true })}>{s.added ? t.added : t.addCase}</button>
+        <button className="btn btn-primary" onClick={download}>{s.downloaded ? t.downloaded : t.download}</button>
+        <button className="btn btn-secondary" onClick={() => { void addToCase(); }}>{addedLabel}</button>
       </div>
     </section>
   );

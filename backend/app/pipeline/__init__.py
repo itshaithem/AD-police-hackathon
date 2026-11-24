@@ -31,6 +31,13 @@ def _write_evidence(sid: str, steps: list, sb: dict, intel: dict):
     return ev, manifest, shots
 
 
+def _brand(brand_id):
+    b = url_features.BRAND_BY_ID.get(brand_id) if brand_id else None
+    if not b:
+        return {"id": brand_id} if brand_id else None
+    return {"id": brand_id, "name": b["name"], "official_domain": b["official_domains"][0]}
+
+
 async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
     f = url_features.extract(url)
     if DEMO_MODE and (cached := db.latest_scan_for_domain(f["domain"])):
@@ -77,7 +84,7 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
         brand_id = f["official_brand"]
     result = {
         "id": sid, "url": url, "final_url": sb.get("final_url") or f["url"], "domain": f["domain"], "source": source,
-        "score": sc, "verdict": verdict, "brand": {"id": brand_id} if brand_id else None,
+        "score": sc, "verdict": verdict, "brand": _brand(brand_id),
         "reasons": reasons, "features": f, "intel": intel,
         "redirect_chain": sb.get("redirect_chain", []), "cloaking": sb.get("bot_view"),
         "content": {k: x for k, x in c.items() if k != "text_excerpt"},

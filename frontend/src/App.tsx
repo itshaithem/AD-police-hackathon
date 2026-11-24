@@ -26,6 +26,8 @@ export default function App() {
           <span className="brand-name" dir="ltr">ScamShield AI</span>
         </div>
         <div className="header-right">
+          <span className="health-dot" title={s.online ? 'API online' : s.online === false ? 'API offline' : 'Checking API'}
+            style={{ background: s.online ? '#6B8E5A' : s.online === false ? '#C99A2E' : '#D3CFC6' }} />
           <button className="link-btn" onClick={toggleDemo}>{s.demo ? t.stopDemo : t.demo}</button>
           {wide && <span className="partner">{t.partner}</span>}
           <div className="lang-switch" role="group" aria-label="Language">
@@ -34,6 +36,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      {s.online === false && <div className="offline-banner" role="status">{t.offline}</div>}
 
       <div className="body">
         {wide && <nav className="side-nav">{navButtons}</nav>}
