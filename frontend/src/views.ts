@@ -11,6 +11,8 @@ export interface Shot { kind: 'suspicious' | 'scanned' | 'real' | 'step'; url: s
 export interface ScanView {
   id?: string;
   domain: string;
+  /** false when the domain is not registered: there is no website to score. */
+  exists: boolean;
   score: number;
   line: Bi;
   reasons: Bi[];
@@ -95,7 +97,7 @@ export function scanFromApi(s: ApiScan): ScanView {
     shots.push({ kind: 'real', url: s.brand.official_domain || brandName(s.brand.id)[0], img: api.file(`/api/references/${s.brand.id}.png`), note: ['Official', 'رسمي'] });
   }
   return {
-    id: s.id, domain: s.domain, score: s.score,
+    id: s.id, domain: s.domain, score: s.score, exists: s.verdict !== 'not_found',
     line: lm?.summary_en && lm?.summary_ar ? [lm.summary_en, lm.summary_ar] : defaultLine(s),
     reasons: s.reasons.map((r) => [r.reason_en, r.reason_ar] as Bi),
     brandLabel: s.brand ? brandName(s.brand.id)[0].toUpperCase() : '',
@@ -114,7 +116,7 @@ export function scanFromMock(domain: string): ScanView {
   const shots: Shot[] = [{ kind: safe ? 'scanned' : 'suspicious', url: domain, note: ['Captured 14:02', 'التُقطت 14:02'] }];
   if (r.real) shots.push({ kind: 'real', url: r.real, note: ['Official', 'رسمي'] });
   return {
-    domain, score: r.score, line: r.line, reasons: r.reasons, brandLabel: r.brand, shots,
+    domain, exists: true, score: r.score, line: r.line, reasons: r.reasons, brandLabel: r.brand, shots,
     facts: { age: r.age, country: r.country, ip: r.ip, registrar: r.reg, detected: DETECTED_AT },
   };
 }
@@ -137,7 +139,7 @@ export function findingFromApi(d: ApiDiscovery): FindingView {
   const source = maps ? 'maps' : d.source.startsWith('search') ? 'search' : d.source === 'lookalike' ? 'lookalike' : 'cert';
   return {
     key: d.id, name: maps ? (d.meta.name || d.item) : hostOf(d.item), kind: maps ? 'maps' : 'web', phone: d.meta.phone || '',
-    brand: brandName(d.brand), source, score: d.score, detectedAt: Date.parse(d.detected_at), scanId: d.scan_id || undefined,
+    brand: brandName(d.brand), source, score: d.verdict === 'not_found' ? null : d.score, detectedAt: Date.parse(d.detected_at), scanId: d.scan_id || undefined,
   };
 }
 

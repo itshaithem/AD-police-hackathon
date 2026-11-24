@@ -3,7 +3,8 @@
     python -m app.cli score input.csv predictions.csv          # full pipeline (sandbox)
     python -m app.cli score input.csv predictions.csv --fast   # URL + network intel only
 
-Output columns: url, verdict, score, is_scam (1/0), top_reasons. is_scam = score >= --threshold (default 40,
+Output columns: url, verdict, score, is_scam (1/0), top_reasons. For domains that do not exist (verdict
+not_found) score is the URL-only score. is_scam = score >= --threshold (default 40,
 "suspicious or worse", which gave the best F1 on our labelled set; use 70 to flag only "scam" verdicts). Never crashes: on error it falls back to the fast score,
 and if that fails too it records an error row.
 """
@@ -37,7 +38,9 @@ IS_SCAM_AT = SUSPICIOUS_AT
 
 
 def _row(url, r):
-    return {"url": url, "verdict": r["verdict"], "score": r["score"], "is_scam": int(r["score"] >= IS_SCAM_AT),
+    # Dead links in a phishing test set are usually taken-down phishing: judge them on the URL itself.
+    score = r["url_only_score"] if r.get("verdict") == "not_found" and r.get("url_only_score") is not None else r["score"]
+    return {"url": url, "verdict": r["verdict"], "score": score, "is_scam": int(score >= IS_SCAM_AT),
             "top_reasons": " | ".join(x["reason_en"] for x in r["reasons"][:3])}
 
 

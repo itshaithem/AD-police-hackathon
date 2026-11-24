@@ -25,10 +25,28 @@ def _vcard(ent, field):
     return next((v[3] for v in (ent.get("vcardArray") or [None, []])[1] if v[0] == field), None)
 
 
+_rdap_sem = asyncio.Semaphore(2)  # rdap.org rate-limits bursts (HTTP 429) during batch scans
+_rdap_cache: dict[str, dict] = {}
+
+
 async def rdap(domain):
+    if domain in _rdap_cache:
+        return _rdap_cache[domain]
+    out = await _rdap(domain)
+    if "error" not in out or "404" in out["error"]:
+        _rdap_cache[domain] = out
+    return out
+
+
+async def _rdap(domain):
     try:
-        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as c:
-            r = await c.get(f"https://rdap.org/domain/{domain}")
+        async with _rdap_sem, httpx.AsyncClient(timeout=8, follow_redirects=True) as c:
+            for attempt in range(4):
+                r = await c.get(f"https://rdap.org/domain/{domain}")
+                if r.status_code != 429:
+                    break
+                wait = r.headers.get("retry-after", "")
+                await asyncio.sleep(min(float(wait), 10) if wait.isdigit() else 1.5 * 2 ** attempt)
             if r.status_code != 200:
                 return {"error": f"rdap status {r.status_code}"}
             j = r.json()

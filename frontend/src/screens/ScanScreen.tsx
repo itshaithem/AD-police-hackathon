@@ -107,9 +107,35 @@ function ShotFrame({ sh, brand, urlColor, t, lang }: { sh: Shot; brand: string; 
   );
 }
 
+function NotFound({ dash, view: r }: { dash: Dashboard; view: ScanView }) {
+  const t = T[dash.state.lang];
+  return (
+    <section className="card result" aria-live="polite">
+      <div className="result-top">
+        <div className="gauge-col">
+          <div className="gauge not-found" aria-hidden="true"><span>—</span></div>
+          <span className="verdict" style={{ color: '#8A8A85' }}>{t.notFound}</span>
+        </div>
+        <div className="result-body">
+          <div className="stack-8" style={{ gap: 4 }}>
+            <span className="result-domain">{r.domain}</span>
+            <p className="result-line">{t.notFoundLine}</p>
+          </div>
+          <ul className="reasons">
+            {r.reasons.slice(1).map((x, i) => (
+              <li key={i}><span className="bullet" style={{ background: '#B5B1A8' }} /><span>{L(x, dash.state.lang)}</span></li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Result({ dash, view: r }: { dash: Dashboard; view: ScanView }) {
   const { state: s, download, addToCase } = dash;
   const t = T[s.lang];
+  if (!r.exists) return <NotFound dash={dash} view={r} />;
   const lv = levelOf(r.score), c = LEVEL_COLOR[lv];
   const restOp = s.shown > r.reasons.length ? 1 : 0;
   const facts: [string, string][] = [

@@ -14,6 +14,23 @@ def _rd(url: str) -> str:
     return registered_domain(host) or host
 
 
+OFFLINE_REASON = {"id": "offline", "weight": 0,
+                  "reason_en": "No website is online at this address right now (taken down or not live yet). The score is based on the domain only.",
+                  "reason_ar": "لا يوجد موقع يعمل على هذا العنوان حالياً (أُزيل أو لم يُفعَّل بعد). الدرجة مبنية على النطاق فقط."}
+
+
+def not_registered_reasons(f: dict) -> list[dict]:
+    out = [{"id": "not_registered", "weight": 0,
+            "reason_en": "This domain does not exist: it is not registered and has no DNS records, so nothing can be opened here.",
+            "reason_ar": "هذا النطاق غير موجود: غير مسجّل ولا توجد له سجلات DNS، لذلك لا يمكن فتح أي شيء على هذا العنوان."}]
+    if f.get("brand_imitation"):
+        b = f["brand_imitation"]["brand"].upper()
+        out.append({"id": "watch_name", "weight": 0,
+                    "reason_en": f"The name imitates {b}. If someone registers it, discovery will flag it.",
+                    "reason_ar": f"الاسم ينتحل {b}. إذا سجّله أحد فسيُرصد تلقائياً."})
+    return out
+
+
 def verdict_for(sc: int) -> str:
     return "scam" if sc >= SCAM_AT else "suspicious" if sc >= SUSPICIOUS_AT else "safe"
 

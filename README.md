@@ -13,7 +13,7 @@ Scam links (fake bank logins, fake traffic-fine payments, fake helplines) spread
 | **Discover** | Watches Certificate Transparency logs, generates and DNS-checks look-alike domains, monitors search results/ads and Google Maps listings for UAE brands. New finds are scanned automatically. |
 | **Detect** | Opens each link in a sandboxed mobile browser (never on the investigator's machine) and scores it from URL, registration, hosting, TLS, redirect, page content, visual-similarity, URL-model and local-LLM signals. |
 | **Connect** | Builds a fraud network: domains linked by shared IP, phone number, form template, page look, TLS certificate or name server. |
-| **Explain** | Every score comes with plain reasons in English and Arabic. |
+| **Explain** | Every score comes with plain reasons in English and Arabic. Addresses that do not exist (not registered, no DNS) get no score: the UI says the site does not exist instead. |
 | **Report** | Evidence folder per scan with a SHA-256 manifest, PDF and JSON exports, and a takedown email draft addressed to the registrar's abuse contact. |
 
 ## 3. How it detects
@@ -69,14 +69,14 @@ Labelled set `data/eval/labeled.csv`: **147 URLs**. There are 65 live phishing U
 |---|---|---|---|---|---|---|
 | Full pipeline (sandbox) | score ≥ 40 (default `is_scam`) | **1.00** | **0.77** | **0.87** | **0.00** | **0.00** |
 | Full pipeline (sandbox) | score ≥ 70 ("scam" verdict) | 1.00 | 0.25 | 0.40 | 0.00 | 0.00 |
-| Fast (URL + network intel, no sandbox) | score ≥ 40 | 1.00 | 0.72 | 0.84 | 0.00 | 0.00 |
+| Fast (URL + network intel, no sandbox) | score ≥ 40 | 1.00 | 0.74 | 0.85 | 0.00 | 0.00 |
 
 Full pipeline run without the visual and LLM signals. Reproduce with `python -m app.eval data/eval/labeled.csv [--fast]`.
 An earlier version had 5 false positives on legitimate UAE retail/news sites (Lulu, Sharaf DG, UAEU…). They came from
 treating same-site redirects as cloaking and counting brand mentions on news pages. Both rules were fixed in general
 terms (compare registered domains; brand mentions need a data-collecting form), not by allowlisting those sites.
 
-URL model on its own (held-out test split of `pirocheto/phishing-url`, 3,772 URLs): accuracy 0.837, phishing F1 0.831.
+URL model on its own (held-out test split of `pirocheto/phishing-url`, 3,772 URLs): accuracy 0.841, phishing F1 0.836.
 
 The set is small, and live phishing pages die within hours (some were already offline when scanned). Treat these numbers as indicative.
 

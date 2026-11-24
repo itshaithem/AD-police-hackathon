@@ -234,7 +234,9 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
   useEffect(() => {
     const check = () => api.health().then(
       // First time online: drop the mock sample result so only real scans are shown.
-      () => set((s) => (s.online === null && !s.scan?.id && !s.scanning ? { online: true, scan: null, url: '' } : { online: true })),
+      () => set((s) => (s.online === null && !s.scan?.id && !s.scanning
+        ? { online: true, scan: null, url: s.url === 'adcb-secure-login.com' ? '' : s.url }
+        : { online: true })),
       () => set({ online: false }),
     );
     check();

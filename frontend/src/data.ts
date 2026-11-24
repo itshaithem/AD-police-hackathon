@@ -14,7 +14,7 @@ export const L = (v: string | Bi, lang: Lang): string =>
 export const DETECTED_AT: Bi = ['24 Nov 2026, 14:02 GST', '24 نوفمبر 2026، 14:02 بتوقيت الإمارات'];
 
 const en = {
-  offline: 'Offline — showing saved demo data', lookalike: 'Look-alike', batchRunning: 'Batch scan', batchDone: 'Batch scan done', downloadCsv: 'Download results',
+  offline: 'Offline — showing saved demo data', notFound: 'Does not exist', notFoundLine: 'This website does not exist. There is nothing to check at this address.', lookalike: 'Look-alike', batchRunning: 'Batch scan', batchDone: 'Batch scan done', downloadCsv: 'Download results',
   scanFailed: 'Scan failed', noFindings: 'No findings yet. Discovery runs automatically every few minutes.', noClusters: 'No linked domains yet. Clusters appear once two or more risky sites share an indicator.',
   noCases: 'No cases yet. Add a scan to a case or generate a cluster report.', working: 'Working…', step: 'Step',
   scan: 'Scan', discovery: 'Discovery', network: 'Network', reports: 'Reports', partner: 'Abu Dhabi Police × 42 Abu Dhabi',
@@ -39,7 +39,7 @@ const en = {
 export type Strings = typeof en;
 
 const ar: Strings = {
-  offline: 'غير متصل — تُعرض بيانات العرض المحفوظة', lookalike: 'نطاق شبيه', batchRunning: 'فحص جماعي', batchDone: 'اكتمل الفحص الجماعي', downloadCsv: 'تنزيل النتائج',
+  offline: 'غير متصل — تُعرض بيانات العرض المحفوظة', notFound: 'غير موجود', notFoundLine: 'هذا الموقع غير موجود. لا يوجد ما يمكن فحصه على هذا العنوان.', lookalike: 'نطاق شبيه', batchRunning: 'فحص جماعي', batchDone: 'اكتمل الفحص الجماعي', downloadCsv: 'تنزيل النتائج',
   scanFailed: 'تعذّر الفحص', noFindings: 'لا توجد نتائج بعد. يعمل الرصد تلقائيًا كل بضع دقائق.', noClusters: 'لا توجد نطاقات مترابطة بعد. تظهر المجموعات عندما يشترك موقعان خطران أو أكثر في مؤشر.',
   noCases: 'لا توجد قضايا بعد. أضف فحصًا إلى قضية أو أنشئ تقرير مجموعة.', working: 'جارٍ العمل…', step: 'خطوة',
   scan: 'الفحص', discovery: 'الرصد', network: 'الشبكة', reports: 'التقارير', partner: 'شرطة أبوظبي × 42 أبوظبي',

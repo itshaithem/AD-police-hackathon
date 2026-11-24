@@ -38,6 +38,21 @@ def _brand(brand_id):
     return {"id": brand_id, "name": b["name"], "official_domain": b["official_domains"][0]}
 
 
+def site_status(f: dict, intel: dict, sb: dict, fast: bool) -> str:
+    """online | offline (registered, nothing loads) | not_registered (no DNS, no registration) | unchecked."""
+    if f["allowlisted"] or f["host"].endswith(".test"):
+        return "online" if sb.get("steps") or not sb else "offline"
+    if sb.get("steps"):
+        return "online"
+    no_dns = not (intel.get("dns") or {}).get("a")
+    unregistered = "404" in str((intel.get("whois") or {}).get("error", ""))
+    if no_dns and unregistered:
+        return "not_registered"
+    if fast:
+        return "offline" if no_dns else "unchecked"
+    return "offline"
+
+
 async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
     f = url_features.extract(url)
     if DEMO_MODE and (cached := db.latest_scan_for_domain(f["domain"])):
@@ -79,6 +94,15 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
     mp = None if f.get("parked") else ml_model.predict(f)
     sc, verdict, reasons = scoring.score(f, intel, sb, c, v, lm, mp)
 
+    status = site_status(f, intel, sb, fast)
+    url_only_score = None
+    if status == "not_registered":
+        # Nothing exists at this address: a risk score would describe the name, not a website.
+        url_only_score = sc
+        sc, verdict, reasons = 0, "not_found", scoring.not_registered_reasons(f)
+    elif status == "offline":
+        reasons = [scoring.OFFLINE_REASON] + reasons
+
     ev, manifest, shots = _write_evidence(sid, steps, sb, intel)
     if sc >= scoring.SUSPICIOUS_AT:
         brand_id = (f["brand_imitation"] or {}).get("brand") or (c["brands_mentioned"] or [None])[0] or (v or {}).get("best_brand")
@@ -86,7 +110,7 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
         brand_id = f["official_brand"]
     result = {
         "id": sid, "url": url, "final_url": sb.get("final_url") or f["url"], "domain": f["domain"], "source": source,
-        "score": sc, "verdict": verdict, "brand": _brand(brand_id),
+        "score": sc, "verdict": verdict, "site_status": status, "url_only_score": url_only_score, "brand": _brand(brand_id),
         "reasons": reasons, "features": f, "intel": intel,
         "redirect_chain": sb.get("redirect_chain", []), "cloaking": sb.get("bot_view"),
         "content": {k: x for k, x in c.items() if k != "text_excerpt"},

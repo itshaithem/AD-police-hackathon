@@ -13,7 +13,8 @@ export interface Screenshot { index: number; label: string; url: string; path: s
 export interface ApiBrand { id: string; name?: { en: string; ar: string }; official_domain?: string }
 export interface ApiScan {
   id: string; url: string; final_url: string; domain: string; score: number;
-  verdict: 'scam' | 'suspicious' | 'safe'; brand: ApiBrand | null; source: string;
+  verdict: 'scam' | 'suspicious' | 'safe' | 'not_found'; brand: ApiBrand | null; source: string;
+  site_status?: 'online' | 'offline' | 'not_registered' | 'unchecked';
   reasons: Reason[]; redirect_chain: string[];
   intel: {
     whois?: { created?: string; age_days?: number; registrar?: string; abuse_email?: string; error?: string };
