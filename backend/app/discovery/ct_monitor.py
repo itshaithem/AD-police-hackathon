@@ -10,13 +10,18 @@ from ..pipeline.url_features import BRANDS, is_allowlisted, registered_domain
 DOMAIN_RE = re.compile(r"^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
 
 
+last_stats = {"queries": 0, "failed": 0}
+
+
 async def _query(c, kw, sem):
     async with sem:
+        last_stats["queries"] += 1
         try:
             r = await c.get("https://crt.sh/", params={"q": f"%{kw}%", "output": "json", "exclude": "expired"})
             return r.json()
         except Exception:
-            return []  # crt.sh is often slow or rate-limited; just skip this keyword
+            last_stats["failed"] += 1  # crt.sh is often slow or rate-limited; skip this keyword
+            return []
 
 
 async def poll(hours=48):
@@ -24,6 +29,7 @@ async def poll(hours=48):
     cutoff = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(hours=hours)
     jobs = [(b, kw) for b in BRANDS if b.get("region") != "global" and b["id"] != "saqrbank"
             for kw in b["keywords"] if len(kw.strip("-")) >= 4]
+    last_stats.update(queries=0, failed=0)
     sem = asyncio.Semaphore(4)
     async with httpx.AsyncClient(timeout=45) as c:
         results = await asyncio.gather(*(_query(c, kw.strip("-"), sem) for _, kw in jobs))

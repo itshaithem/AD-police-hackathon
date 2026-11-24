@@ -45,7 +45,7 @@ async def run_once(include_dnstwist=False) -> dict:
                     n += 1
                     tasks.append(_scan_item(did, d))
             counts[name] = n
-        last_run.update(at=db.now(), counts=counts)
+        last_run.update(at=db.now(), counts=counts, ct_queries_failed=f"{ct_monitor.last_stats['failed']}/{ct_monitor.last_stats['queries']}")
     await asyncio.gather(*tasks)
     return counts
 

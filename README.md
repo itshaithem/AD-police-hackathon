@@ -123,7 +123,7 @@ Input needs a `url` column. Output columns: `url, verdict, score, is_scam, top_r
 
 - One long-running sandbox container with a fresh browser per scan. Production: one disposable container or Firecracker microVM per scan, behind a UAE residential/mobile proxy so scam kits that geo-block show their real content.
 - Maps and Search coverage depend on API keys and quotas.
-- crt.sh is polled, not streamed, and is often slow. Its JSON no longer has `entry_timestamp`, so certificate `not_before` is used. Production: certstream.
+- crt.sh is polled, not streamed, and is unreliable: in our test on 24 Nov 2026, 41 of 43 keyword queries timed out. `/health` reports the failure count (`ct_queries_failed`). Its JSON no longer has `entry_timestamp`, so certificate `not_before` is used. Production: certstream or a commercial CT feed.
 - Small evaluation set. Live phishing pages disappear quickly.
 - The local model is slow on CPU. If the model is not running, scans continue without the AI signal.
 - Graph links ignore shared CDN/cloud IPs and mass DNS providers, which lowers false links but can miss operators who hide behind them.
