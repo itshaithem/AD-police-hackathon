@@ -258,6 +258,8 @@ free_hosts: [vercel.app, netlify.app, github.io, pages.dev, web.app, firebaseapp
              framer.app, framer.website, webflow.io, backblazeb2.com, r2.dev, ipfs.io, dweb.link, square.site, godaddysites.com, mystrikingly.com, yolasite.com,
              jimdosite.com, carrd.co, notion.site, replit.app, repl.co, surge.sh, herokuapp.com, azurewebsites.net, blob.core.windows.net,
              storage.googleapis.com, s3.amazonaws.com, ngrok-free.app, ngrok.io, trycloudflare.com, wordpress.com, myshopify.com, gitbook.io, typedream.app, start.page, railway.app, fly.dev, deno.dev, pythonanywhere.com]
+# Domain marketplaces / parking: a look-alike that lands here is parked or for sale, not an active scam (yet).
+parking_hosts: [afternic.com, godaddy.com, sedo.com, dan.com, hugedomains.com, bodis.com, parkingcrew.net, sav.com, undeveloped.com, atom.com, squadhelp.com, porkbun.com, namecheap.com, spaceship.com, above.com]
 shorteners: [bit.ly, tinyurl.com, t.co, rebrand.ly, cutt.ly, is.gd, s.id, shorturl.at, rb.gy, t.ly, ow.ly, goo.su]
 urgency_keywords:
   en: [urgent, suspended, blocked, verify your, update your, final notice, unpaid, fine, penalty, expire, within 24 hours, refund, prize]

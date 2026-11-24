@@ -52,10 +52,13 @@ def score(f, intel, sb, content, visual, llm, ml_p):
     if ca is not None and ca < 3:
         add("new_cert", .2, "TLS certificate issued in the last 3 days", "شهادة أمان صادرة خلال آخر 3 أيام")
 
+    if f.get("parked"):
+        add("parked", .05, f"Parked or for sale (redirects to {f['parked']}): not active yet, worth monitoring",
+            "النطاق معروض للبيع أو مركون: غير نشط بعد، يستحق المراقبة")
     # Redirects only count when they cross registered domains (http→https→www→/en on one site is normal).
     chain = sb.get("redirect_chain") or []
     chain_domains = list(dict.fromkeys(_rd(c) for c in chain if "://" in c))
-    if f["shortener"] or f.get("redirected_from") or len(chain_domains) >= 2:
+    if not f.get("parked") and (f["shortener"] or f.get("redirected_from") or len(chain_domains) >= 2):
         hops = max(len(chain_domains) - 1, 1)
         add("redirects", .2, f"Hidden behind {hops} cross-site redirect(s) / short link",
             "مخفي خلف روابط تحويل أو رابط مختصر")
@@ -81,10 +84,18 @@ def score(f, intel, sb, content, visual, llm, ml_p):
     if len(content.get("urgency", [])) >= 2 or (content.get("urgency") and asks):
         add("urgency", .15, "Pressure language: " + ", ".join(content["urgency"][:3]), "لغة استعجال وتهديد")
 
-    if visual and visual.get("similarity", 0) >= .88 and visual.get("best_brand"):
-        pct = int(visual["similarity"] * 100)
-        add("visual_clone", .7, f"{pct}% visually similar to the real {visual['best_brand'].upper()} page",
-            f"مطابقة بصرية {pct}% مع الصفحة الرسمية")
+    if visual and visual.get("best_brand"):
+        vb, vs = visual["best_brand"], visual.get("similarity", 0)
+        others = sorted((x for k, x in (visual.get("all") or {}).items() if k != vb), reverse=True)
+        margin = vs - (others[0] if others else 0)
+        claimed = {(bi or {}).get("brand")} | set(content.get("brands_mentioned") or [])
+        pct = int(vs * 100)
+        en, ar = f"{pct}% visually similar to the real {vb.upper()} page", f"مطابقة بصرية {pct}% مع الصفحة الرسمية"
+        if vs >= .88:
+            add("visual_clone", .7, en, ar)
+        elif vs >= .80 and margin >= .03 and vb in claimed:
+            # Moderate similarity counts only when it points at the same brand the domain/page claims.
+            add("visual_clone", .5, en, ar)
     if llm and llm.get("is_scam"):
         c = float(llm.get("confidence", .5))
         add("llm", .6 * c, f"AI analyst: {llm.get('intent', 'likely scam')}",

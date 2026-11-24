@@ -63,18 +63,20 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
         # Re-run features on the final URL if we were redirected to another domain.
         if sb.get("final_url"):
             f2 = url_features.extract(sb["final_url"])
-            if f2["domain"] != f["domain"]:
+            if f2["domain"] in url_features.CFG.get("parking_hosts", []):
+                f["parked"] = f2["domain"]  # keep judging the original domain
+            elif f2["domain"] != f["domain"]:
                 f2["redirected_from"] = f["url"]
                 # Keep shortener evidence from the original link.
                 f2["shortener"] = f2["shortener"] or f["shortener"]
                 f = f2
                 intel = await network_intel.gather(f["host"], f["domain"])
 
-    steps = sb.get("steps", [])
+    steps = [] if f.get("parked") else sb.get("steps", [])
     c = content_mod.analyze(steps, bool(f["official_brand"]))
     v = await asyncio.to_thread(visual.compare, steps[0]["png_b64"]) if steps else None
     lm = await llm.analyze(f["url"], bool(f["official_brand"]), c) if steps and not f["allowlisted"] else None
-    mp = ml_model.predict(f)
+    mp = None if f.get("parked") else ml_model.predict(f)
     sc, verdict, reasons = scoring.score(f, intel, sb, c, v, lm, mp)
 
     ev, manifest, shots = _write_evidence(sid, steps, sb, intel)

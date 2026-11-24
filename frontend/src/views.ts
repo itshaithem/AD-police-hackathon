@@ -128,11 +128,15 @@ export const findingsFromMock = (now: number, live: { row: Finding; at: number }
   ...FINDINGS.map((f) => mockFinding(f.row, now - f.minutesAgo * 60000, f.row.name)),
 ];
 
+const hostOf = (item: string) => {
+  try { return new URL(/^[a-z]+:\/\//i.test(item) ? item : `http://${item}`).hostname.replace(/^www\./, ''); } catch { return item; }
+};
+
 export function findingFromApi(d: ApiDiscovery): FindingView {
   const maps = d.source === 'maps';
   const source = maps ? 'maps' : d.source.startsWith('search') ? 'search' : d.source === 'lookalike' ? 'lookalike' : 'cert';
   return {
-    key: d.id, name: maps ? (d.meta.name || d.item) : d.item, kind: maps ? 'maps' : 'web', phone: d.meta.phone || '',
+    key: d.id, name: maps ? (d.meta.name || d.item) : hostOf(d.item), kind: maps ? 'maps' : 'web', phone: d.meta.phone || '',
     brand: brandName(d.brand), source, score: d.score, detectedAt: Date.parse(d.detected_at), scanId: d.scan_id || undefined,
   };
 }
@@ -147,6 +151,8 @@ const INDICATOR_NAMES: Record<string, Bi> = {
   form: ['Form template', 'قالب النموذج'], phash: ['Page look', 'مظهر الصفحة'], cert: ['TLS certificate', 'شهادة TLS'],
   ns: ['Name server', 'خادم الأسماء'],
 };
+/** Backend stores the last 9 digits of UAE numbers: show them as +971 5X XXX XXXX. */
+const formatPhone = (d: string) => (/^\d{9}$/.test(d) ? `+971 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5)}` : d);
 const indicatorName = (i: ApiIndicator): Bi => INDICATOR_NAMES[i.type] ?? same(i.label);
 
 export function clustersFromApi(cs: ApiCluster[]): ClusterView[] {
@@ -163,7 +169,7 @@ export function clustersFromApi(cs: ApiCluster[]): ClusterView[] {
         `${n} نطاقات مرتبطة عبر ${kinds.map((k) => k[1]).join('، ')}. على الأرجح المشغّل نفسه.`,
       ],
       nodes,
-      indicators: c.shared_indicators.slice(0, 5).map((x) => [indicatorName(x), x.value] as [Bi, string]),
+      indicators: c.shared_indicators.slice(0, 5).map((x) => [indicatorName(x), x.type === 'phone' ? formatPhone(x.value) : x.value] as [Bi, string]),
       scanIds: c.scan_ids,
     };
   });
