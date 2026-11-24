@@ -23,7 +23,8 @@ def analyze(steps: list, domain_is_official: bool) -> dict:
         "emirates_id": has("emirates id", "eid", "784", "الهوية"),
     }
     low = text.lower()
-    urgency = [k for k in CFG["urgency_keywords"]["en"] if k in low] + [k for k in CFG["urgency_keywords"]["ar"] if k in text]
+    urgency = [k for k in CFG["urgency_keywords"]["en"] if re.search(rf"\b{re.escape(k)}\b", low)] + \
+              [k for k in CFG["urgency_keywords"]["ar"] if k in text]
     hay = (text + " " + title).lower()
     mentioned = [] if domain_is_official else [b["id"] for b in BRANDS if any(t.lower() in hay for t in b["text_keywords"])]
     arabic_ratio = len(re.findall(r"[؀-ۿ]", text)) / max(1, len(text))

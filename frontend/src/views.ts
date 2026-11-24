@@ -44,6 +44,12 @@ export const BRAND_NAMES: Record<string, Bi> = {
   fab: ['FAB', 'بنك أبوظبي الأول'], adib: ['ADIB', 'مصرف أبوظبي الإسلامي'], mashreq: ['Mashreq', 'المشرق'],
   emiratespost: ['Emirates Post', 'بريد الإمارات'], salik: ['Salik', 'سالك'], etisalat: ['e&', 'e&'],
   uaegov: ['UAE Government', 'حكومة الإمارات'], aramex: ['Aramex', 'أرامكس'], saqrbank: ['Saqr Bank', 'بنك صقر'],
+  rakbank: ['RAKBANK', 'بنك رأس الخيمة'], dib: ['Dubai Islamic Bank', 'بنك دبي الإسلامي'], emiratesislamic: ['Emirates Islamic', 'الإمارات الإسلامي'],
+  cbd: ['CBD', 'بنك دبي التجاري'], dubaipolice: ['Dubai Police', 'شرطة دبي'], rta: ['RTA', 'هيئة الطرق والمواصلات'], dewa: ['DEWA', 'ديوا'],
+  du: ['du', 'دو'], emirates: ['Emirates', 'طيران الإمارات'], etihad: ['Etihad', 'الاتحاد للطيران'], noon: ['noon', 'نون'], adnoc: ['ADNOC', 'أدنوك'],
+  microsoft: ['Microsoft', 'مايكروسوفت'], paypal: ['PayPal', 'باي بال'], apple: ['Apple', 'أبل'], amazon: ['Amazon', 'أمازون'],
+  netflix: ['Netflix', 'نتفليكس'], dhl: ['DHL', 'دي إتش إل'], fedex: ['FedEx', 'فيديكس'], meta: ['Meta', 'ميتا'], roblox: ['Roblox', 'روبلوكس'],
+  binance: ['Binance', 'بينانس'], coinbase: ['Coinbase', 'كوين بيس'], amex: ['American Express', 'أمريكان إكسبريس'],
 };
 const brandName = (id?: string | null): Bi => (id ? BRAND_NAMES[id] ?? same(id.toUpperCase()) : same(NA));
 

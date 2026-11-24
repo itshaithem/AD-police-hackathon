@@ -2,7 +2,16 @@
 
 Each signal carries an English and an Arabic reason. Allowlisted official domains are forced to Safe.
 """
+from urllib.parse import urlsplit
+
+from .url_features import registered_domain
+
 SCAM_AT, SUSPICIOUS_AT = 70, 40
+
+
+def _rd(url: str) -> str:
+    host = (urlsplit(url).hostname or "").lower()
+    return registered_domain(host) or host
 
 
 def verdict_for(sc: int) -> str:
@@ -43,15 +52,18 @@ def score(f, intel, sb, content, visual, llm, ml_p):
     if ca is not None and ca < 3:
         add("new_cert", .2, "TLS certificate issued in the last 3 days", "شهادة أمان صادرة خلال آخر 3 أيام")
 
+    # Redirects only count when they cross registered domains (http→https→www→/en on one site is normal).
     chain = sb.get("redirect_chain") or []
-    hosts = {c.split("/")[2] for c in chain if "://" in c}
-    if f["shortener"] or f.get("redirected_from") or len(chain) >= 3 or len(hosts) >= 3:
-        add("redirects", .2, f"Hidden behind {max(len(chain) - 1, 1)} redirect(s) / short link",
+    chain_domains = list(dict.fromkeys(_rd(c) for c in chain if "://" in c))
+    if f["shortener"] or f.get("redirected_from") or len(chain_domains) >= 2:
+        hops = max(len(chain_domains) - 1, 1)
+        add("redirects", .2, f"Hidden behind {hops} cross-site redirect(s) / short link",
             "مخفي خلف روابط تحويل أو رابط مختصر")
+    # Cloaking: crawlers and phones end up on different sites (not just www/m./language variants).
     bv, fu = sb.get("bot_view") or {}, sb.get("final_url") or ""
-    if bv.get("final_url") and fu and bv["final_url"].split("/")[2] != fu.split("/")[2]:
-        add("cloaking", .45, "Shows different content to crawlers vs phones (cloaking)",
-            "يعرض محتوى مختلفاً لأدوات الفحص (إخفاء)")
+    if bv.get("final_url") and fu and (bv.get("status") or 0) < 400 and _rd(bv["final_url"]) != _rd(fu):
+        add("cloaking", .45, "Shows a different site to crawlers than to phones (cloaking)",
+            "يعرض موقعاً مختلفاً لأدوات الفحص مقارنة بالهواتف (إخفاء)")
 
     asks = content.get("asks_for", [])
     if "card" in asks or "cvv" in asks:
@@ -62,10 +74,11 @@ def score(f, intel, sb, content, visual, llm, ml_p):
         add("asks_eid", .4, "Page asks for Emirates ID", "الصفحة تطلب رقم الهوية الإماراتية")
     if "password" in asks:
         add("asks_password", .3, "Page has a login/password form", "الصفحة تحتوي نموذج تسجيل دخول")
-    if content.get("brands_mentioned"):
+    # Mentioning a brand is normal (news, shops); it counts when the page also wants data or the domain imitates it.
+    if content.get("brands_mentioned") and (asks or bi):
         add("brand_text", .35, f"Page claims to be {', '.join(content['brands_mentioned']).upper()} on a non-official domain",
             "الصفحة تدّعي أنها جهة رسمية على نطاق غير رسمي")
-    if content.get("urgency"):
+    if len(content.get("urgency", [])) >= 2 or (content.get("urgency") and asks):
         add("urgency", .15, "Pressure language: " + ", ".join(content["urgency"][:3]), "لغة استعجال وتهديد")
 
     if visual and visual.get("similarity", 0) >= .88 and visual.get("best_brand"):

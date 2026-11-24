@@ -79,6 +79,167 @@ brands:
     keywords: [aramex]
     text_keywords: ["Aramex", "أرامكس"]
     phones: []
+  - id: rakbank
+    name: {en: "RAKBANK", ar: "بنك رأس الخيمة الوطني"}
+    official_domains: [rakbank.ae]
+    keywords: [rakbank]
+    text_keywords: ["RAKBANK", "بنك رأس الخيمة"]
+    phones: []
+  - id: dib
+    name: {en: "Dubai Islamic Bank", ar: "بنك دبي الإسلامي"}
+    official_domains: [dib.ae]
+    keywords: [dubaiislamic, dib-bank]
+    text_keywords: ["Dubai Islamic Bank", "بنك دبي الإسلامي"]
+    phones: []
+  - id: emiratesislamic
+    name: {en: "Emirates Islamic", ar: "الإمارات الإسلامي"}
+    official_domains: [emiratesislamic.ae]
+    keywords: [emiratesislamic]
+    text_keywords: ["Emirates Islamic"]
+    phones: []
+  - id: cbd
+    name: {en: "Commercial Bank of Dubai", ar: "بنك دبي التجاري"}
+    official_domains: [cbd.ae]
+    keywords: [cbd-bank, cbdbank]
+    text_keywords: ["Commercial Bank of Dubai", "بنك دبي التجاري"]
+    phones: []
+  - id: dubaipolice
+    name: {en: "Dubai Police", ar: "شرطة دبي"}
+    official_domains: [dubaipolice.gov.ae]
+    keywords: [dubaipolice, dubai-police]
+    text_keywords: ["Dubai Police", "شرطة دبي"]
+    phones: []
+  - id: rta
+    name: {en: "RTA Dubai", ar: "هيئة الطرق والمواصلات"}
+    official_domains: [rta.ae]
+    keywords: [rta-dubai, rtadubai, rta-fines]
+    text_keywords: ["Roads and Transport Authority", "هيئة الطرق والمواصلات"]
+    phones: []
+  - id: dewa
+    name: {en: "DEWA", ar: "هيئة كهرباء ومياه دبي"}
+    official_domains: [dewa.gov.ae]
+    keywords: [dewa-, -dewa]
+    text_keywords: ["DEWA", "هيئة كهرباء ومياه دبي"]
+    phones: []
+  - id: du
+    name: {en: "du", ar: "دو"}
+    official_domains: [du.ae]
+    keywords: [du-telecom, du-recharge]
+    text_keywords: []
+    phones: []
+  - id: emirates
+    name: {en: "Emirates", ar: "طيران الإمارات"}
+    official_domains: [emirates.com]
+    keywords: [emirates-airline, emiratesairline, flyemirates]
+    text_keywords: []
+    phones: []
+  - id: etihad
+    name: {en: "Etihad Airways", ar: "الاتحاد للطيران"}
+    official_domains: [etihad.com]
+    keywords: [etihad]
+    text_keywords: ["Etihad Airways"]
+    phones: []
+  - id: noon
+    name: {en: "noon", ar: "نون"}
+    official_domains: [noon.com]
+    keywords: [noon-uae, noonuae, noon-shop]
+    text_keywords: []
+    phones: []
+  - id: adnoc
+    name: {en: "ADNOC", ar: "أدنوك"}
+    official_domains: [adnoc.ae]
+    keywords: [adnoc]
+    text_keywords: ["ADNOC", "أدنوك"]
+    phones: []
+  # Global brands commonly phished in the UAE. strict = keyword must be a whole label/word, not a substring.
+  - id: microsoft
+    region: global
+    name: {en: "Microsoft", ar: "مايكروسوفت"}
+    official_domains: [microsoft.com, microsoftonline.com, live.com, office.com, outlook.com, sharepoint.com, onedrive.com]
+    keywords: [microsoft, office365, outlook, onedrive, sharepoint, microsoftonline]
+    text_keywords: []
+    phones: []
+  - id: paypal
+    region: global
+    name: {en: "PayPal", ar: "باي بال"}
+    official_domains: [paypal.com]
+    keywords: [paypal]
+    text_keywords: []
+    phones: []
+  - id: apple
+    region: global
+    name: {en: "Apple", ar: "أبل"}
+    official_domains: [apple.com, icloud.com]
+    keywords: [apple, icloud, appleid]
+    strict: true
+    text_keywords: []
+    phones: []
+  - id: amazon
+    region: global
+    name: {en: "Amazon", ar: "أمازون"}
+    official_domains: [amazon.com, amazon.ae, amazon.co.uk, amazon.de, aws.amazon.com]
+    keywords: [amazon]
+    strict: true
+    text_keywords: []
+    phones: []
+  - id: netflix
+    region: global
+    name: {en: "Netflix", ar: "نتفليكس"}
+    official_domains: [netflix.com]
+    keywords: [netflix]
+    text_keywords: []
+    phones: []
+  - id: dhl
+    region: global
+    name: {en: "DHL", ar: "دي إتش إل"}
+    official_domains: [dhl.com, dhl.de]
+    keywords: [dhl]
+    strict: true
+    text_keywords: []
+    phones: []
+  - id: fedex
+    region: global
+    name: {en: "FedEx", ar: "فيديكس"}
+    official_domains: [fedex.com]
+    keywords: [fedex]
+    text_keywords: []
+    phones: []
+  - id: meta
+    region: global
+    name: {en: "Meta (Facebook / Instagram / WhatsApp)", ar: "ميتا"}
+    official_domains: [facebook.com, instagram.com, whatsapp.com, meta.com, fb.com]
+    keywords: [facebook, instagram, whatsapp]
+    text_keywords: []
+    phones: []
+  - id: roblox
+    region: global
+    name: {en: "Roblox", ar: "روبلوكس"}
+    official_domains: [roblox.com]
+    keywords: [roblox]
+    text_keywords: []
+    phones: []
+  - id: binance
+    region: global
+    name: {en: "Binance", ar: "بينانس"}
+    official_domains: [binance.com]
+    keywords: [binance]
+    text_keywords: []
+    phones: []
+  - id: coinbase
+    region: global
+    name: {en: "Coinbase", ar: "كوين بيس"}
+    official_domains: [coinbase.com]
+    keywords: [coinbase]
+    text_keywords: []
+    phones: []
+  - id: amex
+    region: global
+    name: {en: "American Express", ar: "أمريكان إكسبريس"}
+    official_domains: [americanexpress.com]
+    keywords: [americanexpress, amex]
+    strict: true
+    text_keywords: []
+    phones: []
   # FICTIONAL demo brand (section 12) — safe to show live
   - id: saqrbank
     name: {en: "Saqr Bank (fictional demo brand)", ar: "بنك صقر (علامة تجريبية)"}
@@ -88,11 +249,15 @@ brands:
     phones: ["0400000000"]
 
 # Always-safe domains (extend with Tranco top sites for fewer false positives)
-extra_allowlist: [google.com, apple.com, microsoft.com, gov.ae]
+extra_allowlist: [google.com, gov.ae, youtube.com, wikipedia.org, github.com, linkedin.com, cloudflare.com, nbf.ae, hsbc.ae, citibank.ae, wio.io, liv.me,
+                  ajmanbank.ae, sib.ae, adcbislamic.com, khaleejtimes.com, thenationalnews.com, gulfnews.com, wam.ae, dubai.ae, adgm.com, difc.ae]
 allowlist_suffixes: [".gov.ae"]          # any *.gov.ae is official
 
 suspicious_tlds: [xyz, top, icu, shop, online, click, live, cfd, sbs, info, buzz, rest, monster, lol, support, help, site, website, cyou]
-free_hosts: [vercel.app, netlify.app, github.io, pages.dev, web.app, firebaseapp.com, weebly.com, wixsite.com, 000webhostapp.com, glitch.me, blogspot.com, sites.google.com, workers.dev, onrender.com]
+free_hosts: [vercel.app, netlify.app, github.io, pages.dev, web.app, firebaseapp.com, weebly.com, wixsite.com, 000webhostapp.com, glitch.me, blogspot.com, sites.google.com, workers.dev, onrender.com,
+             framer.app, framer.website, webflow.io, backblazeb2.com, r2.dev, ipfs.io, dweb.link, square.site, godaddysites.com, mystrikingly.com, yolasite.com,
+             jimdosite.com, carrd.co, notion.site, replit.app, repl.co, surge.sh, herokuapp.com, azurewebsites.net, blob.core.windows.net,
+             storage.googleapis.com, s3.amazonaws.com, ngrok-free.app, ngrok.io, trycloudflare.com, wordpress.com, myshopify.com, gitbook.io, typedream.app, start.page, railway.app, fly.dev, deno.dev, pythonanywhere.com]
 shorteners: [bit.ly, tinyurl.com, t.co, rebrand.ly, cutt.ly, is.gd, s.id, shorturl.at, rb.gy, t.ly, ow.ly, goo.su]
 urgency_keywords:
   en: [urgent, suspended, blocked, verify your, update your, final notice, unpaid, fine, penalty, expire, within 24 hours, refund, prize]

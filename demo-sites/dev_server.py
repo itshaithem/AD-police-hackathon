@@ -7,7 +7,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-SITES = {"saqrbank.test", "saqrbank-secure-login.test"}
+SITES = {"saqrbank.test", "saqrbank-secure-login.test", "saqr-bank-verify.test"}
 
 
 class Handler(SimpleHTTPRequestHandler):

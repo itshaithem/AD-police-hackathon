@@ -12,3 +12,4 @@ data/evidence/
 data/jobs/
 data/url_model.joblib
 .vite/
+data/eval_run/

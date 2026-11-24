@@ -65,15 +65,21 @@ def brand_match(host: str):
     sk = skeleton(host)
     labels = re.split(r"[.\-_]", sk)
     raw = host.lower()
+    tokens = set(labels)
     for b in BRANDS:
+        strict = b.get("strict", False)
         for kw in b["keywords"]:
             k = kw.replace("-", "")
-            if kw in raw or k in sk.replace("-", ""):
+            if strict:
+                # Common words (apple, amazon…) only count as a whole label/word, never a substring.
+                if k in tokens:
+                    return b, ("keyword" if k in re.split(r"[.\-_]", raw) else "homoglyph"), kw
+            elif kw in raw or k in sk.replace("-", ""):
                 return b, ("keyword" if kw in raw else "homoglyph"), kw
-            # Typosquats only for keywords long enough that 1-2 edits are unlikely to be a real word.
-            if len(k) >= 5:
+            # Typosquats (one edit) only for keywords long enough that one edit is unlikely to be a real word.
+            if len(k) >= 6:
                 for lab in labels:
-                    if len(lab) >= 4 and 0 < Levenshtein.distance(lab, k) <= (1 if len(k) <= 6 else 2):
+                    if len(lab) >= 5 and Levenshtein.distance(lab, k) == 1:
                         return b, "typosquat", f"{lab}≈{k}"
     return None, None, None
 
