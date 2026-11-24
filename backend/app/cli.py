@@ -3,7 +3,8 @@
     python -m app.cli score input.csv predictions.csv          # full pipeline (sandbox)
     python -m app.cli score input.csv predictions.csv --fast   # URL + network intel only
 
-Output columns: url, verdict, score, is_scam (1/0), top_reasons. Never crashes: on error it falls back to the fast score,
+Output columns: url, verdict, score, is_scam (1/0), top_reasons. is_scam = score >= --threshold (default 40,
+"suspicious or worse", which gave the best F1 on our labelled set; use 70 to flag only "scam" verdicts). Never crashes: on error it falls back to the fast score,
 and if that fails too it records an error row.
 """
 import argparse
@@ -14,6 +15,8 @@ from typing import Callable
 
 from .config import SCAN_CONCURRENCY
 from .pipeline import run_scan
+from .pipeline.scoring import SUSPICIOUS_AT
+from .pipeline.url_features import extract
 
 FIELDS = ["url", "verdict", "score", "is_scam", "top_reasons"]
 PER_URL_TIMEOUT = 60
@@ -30,12 +33,18 @@ def read_urls(path) -> list[str]:
     return [r[key].strip() for r in rows if (r.get(key) or "").strip()]
 
 
+IS_SCAM_AT = SUSPICIOUS_AT
+
+
 def _row(url, r):
-    return {"url": url, "verdict": r["verdict"], "score": r["score"], "is_scam": int(r["verdict"] == "scam"),
+    return {"url": url, "verdict": r["verdict"], "score": r["score"], "is_scam": int(r["score"] >= IS_SCAM_AT),
             "top_reasons": " | ".join(x["reason_en"] for x in r["reasons"][:3])}
 
 
 async def score_one(url: str, fast: bool) -> dict:
+    host = extract(url)["host"]
+    if not host or ("." not in host and ":" not in host) or " " in url.strip():
+        return {"url": url, "verdict": "invalid", "score": "", "is_scam": "", "top_reasons": "not a URL"}
     try:
         return _row(url, await asyncio.wait_for(run_scan(url, source="batch", fast=fast), PER_URL_TIMEOUT))
     except Exception:
@@ -75,7 +84,10 @@ def main(argv=None):
     s.add_argument("input")
     s.add_argument("output")
     s.add_argument("--fast", action="store_true", help="URL features + network intel only (no sandbox)")
+    s.add_argument("--threshold", type=int, default=SUSPICIOUS_AT, help="score at or above which is_scam = 1 (default 40)")
     a = ap.parse_args(argv)
+    global IS_SCAM_AT
+    IS_SCAM_AT = a.threshold
     urls = read_urls(a.input)
     print(f"scoring {len(urls)} URLs ({'fast' if a.fast else 'full'})…", file=sys.stderr)
     asyncio.run(score_urls(urls, a.output, a.fast, lambda n: print(f"\r{n}/{len(urls)}", end="", file=sys.stderr)))

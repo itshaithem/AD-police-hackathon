@@ -11,7 +11,7 @@ from rapidfuzz.distance import Levenshtein
 CFG = yaml.safe_load((Path(__file__).parent.parent / "brands.yaml").read_text(encoding="utf-8"))
 BRANDS = CFG["brands"]
 BRAND_BY_ID = {b["id"]: b for b in BRANDS}
-EXTRACT = tldextract.TLDExtract(suffix_list_urls=(), extra_suffixes=["test"])  # offline snapshot
+EXTRACT = tldextract.TLDExtract(suffix_list_urls=(), extra_suffixes=["test"], include_psl_private_domains=True)  # offline snapshot
 CONFUSABLE = str.maketrans({"а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "х": "x", "і": "i", "ӏ": "l", "ј": "j",
                             "0": "o", "1": "l", "3": "e", "5": "s", "$": "s", "@": "a"})
 URL_KEYWORDS = ("login", "verify", "secure", "update", "account", "pay", "fine", "refund", "otp", "wallet")

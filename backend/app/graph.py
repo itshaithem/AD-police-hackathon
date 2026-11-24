@@ -6,21 +6,34 @@ import networkx as nx
 from . import db
 
 MAX_INDICATOR_DEGREE = 25  # drop CDN IPs, big registrars etc. so clusters stay meaningful
-INDICATOR_LABELS = {"ip": "Shared IP", "asn": "ASN", "phone": "Phone number", "form": "Form template",
+INDICATOR_LABELS = {"ip": "Shared IP", "phone": "Phone number", "form": "Form template",
                     "phash": "Page look (perceptual hash)", "cert": "TLS certificate", "ns": "Name server"}
+
+
+# Shared infrastructure that links unrelated sites: big CDNs/clouds/site builders and mass DNS providers.
+SHARED_ASNS = {13335, 16509, 14618, 15169, 396982, 8075, 54113, 20940, 16625, 27647, 209242, 19551, 32934}
+SHARED_NS = ("cloudflare.com", "awsdns", "wixdns.net", "domaincontrol.com", "registrar-servers.com", "googledomains.com",
+             "google.com", "nsone.net", "azure-dns", "dnsowl.com", "hostinger.com", "dns-parking.com", "squarespacedns.com",
+             "weebly.com", "vercel-dns.com", "netlify.com", "digitalocean.com", "linode.com", "akam.net", "ultradns")
 
 
 def _indicators(s: dict):
     intel = s.get("intel") or {}
     h, t, w = intel.get("hosting") or {}, intel.get("tls") or {}, intel.get("whois") or {}
     c, v = s.get("content") or {}, s.get("visual") or {}
-    if h.get("ip"): yield "ip", h["ip"]
-    if h.get("asn"): yield "asn", str(h["asn"])
-    for p in c.get("phones", []): yield "phone", "".join(ch for ch in p if ch.isdigit())[-9:]
-    if c.get("form_signature"): yield "form", hashlib.sha1(c["form_signature"].encode()).hexdigest()[:10]
-    if v.get("phash"): yield "phash", v["phash"][:12]
-    if t.get("serial"): yield "cert", t["serial"]
-    for n in (w.get("nameservers") or [])[:4]: yield "ns", n.lower()
+    if h.get("ip") and h.get("asn") not in SHARED_ASNS:
+        yield "ip", h["ip"]
+    for p in c.get("phones", []):
+        yield "phone", "".join(ch for ch in p if ch.isdigit())[-9:]
+    if c.get("form_signature"):
+        yield "form", hashlib.sha1(c["form_signature"].encode()).hexdigest()[:10]
+        if v.get("phash"):  # page look only links pages that collect data (blank/error pages look alike)
+            yield "phash", v["phash"][:12]
+    if t.get("serial"):
+        yield "cert", t["serial"]
+    for n in (w.get("nameservers") or [])[:4]:
+        if not any(x in n.lower() for x in SHARED_NS):
+            yield "ns", n.lower()
 
 
 def build(min_score=40, limit=500) -> dict:
