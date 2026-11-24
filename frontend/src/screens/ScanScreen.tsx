@@ -114,12 +114,12 @@ function NotFound({ dash, view: r }: { dash: Dashboard; view: ScanView }) {
       <div className="result-top">
         <div className="gauge-col">
           <div className="gauge not-found" aria-hidden="true"><span>—</span></div>
-          <span className="verdict" style={{ color: '#8A8A85' }}>{t.notFound}</span>
+          <span className="verdict" style={{ color: '#8A8A85' }}>{r.blocked ? t.notScanned : t.notFound}</span>
         </div>
         <div className="result-body">
           <div className="stack-8" style={{ gap: 4 }}>
             <span className="result-domain">{r.domain}</span>
-            <p className="result-line">{t.notFoundLine}</p>
+            <p className="result-line">{r.blocked ? L(r.reasons[0], dash.state.lang) : t.notFoundLine}</p>
           </div>
           <ul className="reasons">
             {r.reasons.slice(1).map((x, i) => (

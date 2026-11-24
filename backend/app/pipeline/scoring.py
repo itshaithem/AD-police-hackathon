@@ -19,6 +19,11 @@ OFFLINE_REASON = {"id": "offline", "weight": 0,
                   "reason_ar": "لا يوجد موقع يعمل على هذا العنوان حالياً (أُزيل أو لم يُفعَّل بعد). الدرجة مبنية على النطاق فقط."}
 
 
+BLOCKED_REASON = {"id": "blocked", "weight": 0,
+                  "reason_en": "Not scanned: this address points to a private or internal network, which the sandbox never opens.",
+                  "reason_ar": "لم يُفحص: هذا العنوان يشير إلى شبكة خاصة أو داخلية، ولا يفتحها صندوق العزل أبداً."}
+
+
 def not_registered_reasons(f: dict) -> list[dict]:
     out = [{"id": "not_registered", "weight": 0,
             "reason_en": "This domain does not exist: it is not registered and has no DNS records, so nothing can be opened here.",

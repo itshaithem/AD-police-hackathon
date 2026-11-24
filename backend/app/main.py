@@ -20,10 +20,18 @@ from .schemas import CaseCreate, CasePatch, ScanRequest
 logging.basicConfig(level=logging.INFO)
 
 
+async def warm_up():
+    """Load CLIP and the local model into memory at startup, so the first demo scan isn't the slow one."""
+    await asyncio.to_thread(visual.available)
+    await llm.analyze("http://warmup.invalid", False, {"title": "", "asks_for": [], "text_excerpt": "warm-up"})
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(discovery.forever()) if DISCOVERY_ENABLED else None
+    warm = asyncio.create_task(warm_up())
     yield
+    warm.cancel()
     if task:
         task.cancel()
 

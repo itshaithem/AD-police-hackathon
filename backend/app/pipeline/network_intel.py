@@ -1,6 +1,7 @@
 """DNS, RDAP/WHOIS, TLS and IP/ASN intelligence for a host."""
 import asyncio
 import datetime as dt
+import ipaddress
 import socket
 import ssl
 
@@ -98,9 +99,45 @@ async def ip_info(ip):
         return {"ip": ip, "error": str(e)[:200]}
 
 
+def is_internal(host: str, addrs: list[str]) -> bool:
+    """Single-label names (docker service names) and private/loopback addresses are never probed."""
+    if "." not in host:
+        return True
+    for a in [host, *addrs]:
+        try:
+            ip = ipaddress.ip_address(a)
+        except ValueError:
+            continue
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return True
+    return False
+
+
+async def host_is_internal(host: str) -> bool:
+    if host.endswith(".test"):
+        return False
+    if "." not in host:
+        return True
+    return is_internal(host, (await resolve_a(host)))
+
+
+async def resolve_a(host) -> list[str]:
+    r = dns.asyncresolver.Resolver()
+    r.lifetime = 4
+    try:
+        return [x.to_text() for x in await r.resolve(host, "A")]
+    except Exception:
+        return []
+
+
 async def gather(host, domain):
     if host.endswith(".test"):  # local fictional demo sites: no public intel exists
         return {"dns": {"a": [], "mx": [], "ns": []}, "whois": {"error": "demo domain"}, "tls": {}, "hosting": {}}
-    d, w, t = await asyncio.gather(resolve(host), rdap(domain), tls(host))
+    if "." not in host:
+        return {"dns": {"a": [], "mx": [], "ns": []}, "whois": {}, "tls": {}, "hosting": {}, "internal": True}
+    d = await resolve(host)
+    if is_internal(host, d["a"]):
+        return {"dns": d, "whois": {}, "tls": {}, "hosting": {}, "internal": True}
+    w, t = await asyncio.gather(rdap(domain), tls(host))
     ipi = await ip_info(d["a"][0]) if d["a"] else {}
     return {"dns": d, "whois": w, "tls": t, "hosting": ipi}

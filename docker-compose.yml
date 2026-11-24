@@ -28,6 +28,16 @@ services:
     networks: [internal]
     profiles: ["llm"]           # docker compose --profile llm up
 
+  # One-off model download. Ollama itself has no internet (internal network only), so the model is
+  # fetched by this helper into the shared volume:  docker compose run --rm ollama-pull
+  ollama-pull:
+    image: ollama/ollama
+    volumes: ["ollama:/root/.ollama"]
+    environment: ["OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:4b}"]
+    entrypoint: ["/bin/sh", "-c", "ollama serve >/dev/null 2>&1 & sleep 3 && ollama pull $$OLLAMA_MODEL"]
+    networks: [egress]
+    profiles: ["setup"]
+
   frontend:
     build:
       context: ./frontend

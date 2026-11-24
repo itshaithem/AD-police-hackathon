@@ -5,6 +5,9 @@ import httpx
 
 from ..config import LLM_ENABLED, OLLAMA_MODEL, OLLAMA_URL
 
+# First call after a restart loads the model into memory, which can take minutes on CPU.
+LLM_TIMEOUT = 240
+
 PROMPT = """You are a fraud analyst for Abu Dhabi Police. Analyse this web page captured in a sandbox.
 URL: {url}
 Domain is an official brand domain: {official}
@@ -24,13 +27,13 @@ Return ONLY JSON:
 async def analyze(url, official, content):
     if not LLM_ENABLED:
         return None
-    body = {"model": OLLAMA_MODEL, "stream": False, "format": "json", "think": False,
+    body = {"model": OLLAMA_MODEL, "stream": False, "format": "json", "think": False, "keep_alive": "24h",
             "options": {"temperature": 0.1},
             "messages": [{"role": "user", "content": PROMPT.format(
                 url=url, official=official, title=content["title"], asks=content["asks_for"],
                 text=content["text_excerpt"][:2500])}]}
     try:
-        async with httpx.AsyncClient(timeout=45) as c:
+        async with httpx.AsyncClient(timeout=LLM_TIMEOUT) as c:
             r = await c.post(f"{OLLAMA_URL}/api/chat", json=body)
             r.raise_for_status()
         return json.loads(r.json()["message"]["content"])

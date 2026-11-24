@@ -39,7 +39,9 @@ def _brand(brand_id):
 
 
 def site_status(f: dict, intel: dict, sb: dict, fast: bool) -> str:
-    """online | offline (registered, nothing loads) | not_registered (no DNS, no registration) | unchecked."""
+    """online | offline | not_registered (no DNS, no registration) | blocked (internal address) | unchecked."""
+    if intel.get("internal") or "refusing to visit internal address" in str(sb.get("error") or ""):
+        return "blocked"
     if f["allowlisted"] or f["host"].endswith(".test"):
         return "online" if sb.get("steps") or not sb else "offline"
     if sb.get("steps"):
@@ -73,8 +75,11 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
     elif fast:
         intel, sb = await network_intel.gather(f["host"], f["domain"]), {}
     else:
-        intel, sb = await asyncio.gather(network_intel.gather(f["host"], f["domain"]),
-                                         sandbox_client.visit(f["url"], agent=agent))
+        if await network_intel.host_is_internal(f["host"]):
+            intel, sb = {"internal": True}, {"error": "refusing to visit internal address"}
+        else:
+            intel, sb = await asyncio.gather(network_intel.gather(f["host"], f["domain"]),
+                                             sandbox_client.visit(f["url"], agent=agent))
         # Re-run features on the final URL if we were redirected to another domain.
         if sb.get("final_url"):
             f2 = url_features.extract(sb["final_url"])
@@ -100,6 +105,8 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
         # Nothing exists at this address: a risk score would describe the name, not a website.
         url_only_score = sc
         sc, verdict, reasons = 0, "not_found", scoring.not_registered_reasons(f)
+    elif status == "blocked":
+        sc, verdict, reasons = 0, "blocked", [scoring.BLOCKED_REASON]
     elif status == "offline":
         reasons = [scoring.OFFLINE_REASON] + reasons
 

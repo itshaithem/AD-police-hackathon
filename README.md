@@ -86,11 +86,12 @@ The set is small, and live phishing pages die within hours (some were already of
 ```bash
 cp .env.example .env            # set API_KEY, optional SERPAPI_KEY / GOOGLE_PLACES_KEY
 docker compose --profile llm up -d --build
-docker compose exec ollama ollama pull qwen3:4b
+docker compose run --rm ollama-pull                      # model download (Ollama itself has no internet)
 docker compose exec backend python -m app.capture_refs     # official-page screenshots for visual similarity
 docker compose exec backend python -m app.seed_demo        # demo data (real scans)
 open http://localhost:8080
 ```
+The first scan after startup is warmed up automatically (CLIP and the model are loaded in the background, ~2 minutes on CPU); after that a full scan with the agent and AI analyst takes about 7–15 s. On macOS with Colima give the VM at least 8 CPUs / 12 GB (`colima start --cpu 8 --memory 14`). If image builds fail with DNS timeouts, Colima's DNS forwarder is stuck: point the VM at your router's DNS (`colima ssh -- sudo sh -c 'echo nameserver <router-ip> > /etc/resolv.conf'`).
 
 **Local development (no Docker)**
 ```bash

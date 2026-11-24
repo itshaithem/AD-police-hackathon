@@ -75,7 +75,8 @@ def brand_match(host: str):
                 if k in tokens:
                     return b, ("keyword" if k in re.split(r"[.\-_]", raw) else "homoglyph"), kw
             elif kw in raw or k in sk.replace("-", ""):
-                return b, ("keyword" if kw in raw else "homoglyph"), kw
+                # Same letters once hyphens are ignored = keyword; only a character swap is a homoglyph.
+                return b, ("keyword" if k in raw.replace("-", "") else "homoglyph"), kw
             # Typosquats (one edit) only for keywords long enough that one edit is unlikely to be a real word.
             if len(k) >= 6:
                 for lab in labels:
