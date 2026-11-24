@@ -1,0 +1,99 @@
+# UAE brand registry + allowlist.
+# VERIFY every domain and phone against the brand's official site before the demo.
+brands:
+  - id: adcb
+    name: {en: "ADCB", ar: "بنك أبوظبي التجاري"}
+    official_domains: [adcb.com]
+    keywords: [adcb]
+    text_keywords: ["ADCB", "Abu Dhabi Commercial Bank", "بنك أبوظبي التجاري"]
+    phones: []
+  - id: tamm
+    name: {en: "TAMM", ar: "تم"}
+    official_domains: [tamm.abudhabi]
+    keywords: [tamm]
+    text_keywords: ["TAMM", "تم أبوظبي"]
+    phones: []
+  - id: uaepass
+    name: {en: "UAE PASS", ar: "الهوية الرقمية"}
+    official_domains: [uaepass.ae]
+    keywords: [uaepass, uae-pass]
+    text_keywords: ["UAE PASS", "الهوية الرقمية"]
+    phones: []
+  - id: adpolice
+    name: {en: "Abu Dhabi Police", ar: "شرطة أبوظبي"}
+    official_domains: [adpolice.gov.ae]
+    keywords: [adpolice, abudhabipolice, adp-fines]
+    text_keywords: ["Abu Dhabi Police", "شرطة أبوظبي"]
+    phones: []
+  - id: emiratesnbd
+    name: {en: "Emirates NBD", ar: "بنك الإمارات دبي الوطني"}
+    official_domains: [emiratesnbd.com]
+    keywords: [emiratesnbd, enbd]
+    text_keywords: ["Emirates NBD"]
+    phones: []
+  - id: fab
+    name: {en: "First Abu Dhabi Bank", ar: "بنك أبوظبي الأول"}
+    official_domains: [bankfab.com]
+    keywords: [bankfab, fab-bank]
+    text_keywords: ["First Abu Dhabi Bank", "بنك أبوظبي الأول"]
+    phones: []
+  - id: adib
+    name: {en: "ADIB", ar: "مصرف أبوظبي الإسلامي"}
+    official_domains: [adib.ae]
+    keywords: [adib]
+    text_keywords: ["ADIB", "مصرف أبوظبي الإسلامي"]
+    phones: []
+  - id: mashreq
+    name: {en: "Mashreq", ar: "المشرق"}
+    official_domains: [mashreq.com]
+    keywords: [mashreq]
+    text_keywords: ["Mashreq"]
+    phones: []
+  - id: emiratespost
+    name: {en: "Emirates Post", ar: "بريد الإمارات"}
+    official_domains: [emiratespost.ae]
+    keywords: [emiratespost, empost]
+    text_keywords: ["Emirates Post", "بريد الإمارات"]
+    phones: []
+  - id: salik
+    name: {en: "Salik", ar: "سالك"}
+    official_domains: [salik.ae]
+    keywords: [salik]
+    text_keywords: ["Salik", "سالك"]
+    phones: []
+  - id: etisalat
+    name: {en: "e& (Etisalat)", ar: "اتصالات"}
+    official_domains: [etisalat.ae, eand.com]
+    keywords: [etisalat]
+    text_keywords: ["Etisalat", "اتصالات"]
+    phones: []
+  - id: uaegov
+    name: {en: "UAE Government", ar: "حكومة الإمارات"}
+    official_domains: [u.ae, moi.gov.ae]
+    keywords: [uae-gov, moi-uae]
+    text_keywords: ["Ministry of Interior", "وزارة الداخلية"]
+    phones: []
+  - id: aramex
+    name: {en: "Aramex", ar: "أرامكس"}
+    official_domains: [aramex.com]
+    keywords: [aramex]
+    text_keywords: ["Aramex", "أرامكس"]
+    phones: []
+  # FICTIONAL demo brand (section 12) — safe to show live
+  - id: saqrbank
+    name: {en: "Saqr Bank (fictional demo brand)", ar: "بنك صقر (علامة تجريبية)"}
+    official_domains: [saqrbank.test]
+    keywords: [saqrbank, saqr-bank]
+    text_keywords: ["Saqr Bank", "بنك صقر"]
+    phones: ["0400000000"]
+
+# Always-safe domains (extend with Tranco top sites for fewer false positives)
+extra_allowlist: [google.com, apple.com, microsoft.com, gov.ae]
+allowlist_suffixes: [".gov.ae"]          # any *.gov.ae is official
+
+suspicious_tlds: [xyz, top, icu, shop, online, click, live, cfd, sbs, info, buzz, rest, monster, lol, support, help, site, website, cyou]
+free_hosts: [vercel.app, netlify.app, github.io, pages.dev, web.app, firebaseapp.com, weebly.com, wixsite.com, 000webhostapp.com, glitch.me, blogspot.com, sites.google.com, workers.dev, onrender.com]
+shorteners: [bit.ly, tinyurl.com, t.co, rebrand.ly, cutt.ly, is.gd, s.id, shorturl.at, rb.gy, t.ly, ow.ly, goo.su]
+urgency_keywords:
+  en: [urgent, suspended, blocked, verify your, update your, final notice, unpaid, fine, penalty, expire, within 24 hours, refund, prize]
+  ar: [عاجل, مخالفة, غرامة, سيتم إيقاف, تم إيقاف, تحديث بياناتك, تحديث البيانات, إشعار نهائي, مستحقات, استرداد, جائزة, خلال 24 ساعة, تحقق]

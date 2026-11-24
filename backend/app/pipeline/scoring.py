@@ -1,0 +1,88 @@
+"""Explainable noisy-OR scoring: score = 100 × (1 − ∏(1 − wᵢ)) over triggered signals.
+
+Each signal carries an English and an Arabic reason. Allowlisted official domains are forced to Safe.
+"""
+SCAM_AT, SUSPICIOUS_AT = 70, 40
+
+
+def verdict_for(sc: int) -> str:
+    return "scam" if sc >= SCAM_AT else "suspicious" if sc >= SUSPICIOUS_AT else "safe"
+
+
+def score(f, intel, sb, content, visual, llm, ml_p):
+    S = []
+
+    def add(i, w, en, ar):
+        S.append({"id": i, "weight": round(w, 3), "reason_en": en, "reason_ar": ar})
+
+    if f["allowlisted"]:
+        return 2, "safe", [{"id": "official_domain", "weight": 0,
+                            "reason_en": f"Official domain ({f['official_brand'] or f['domain']})",
+                            "reason_ar": "نطاق رسمي معتمد"}]
+
+    bi = f["brand_imitation"]
+    if bi:
+        w = {"homoglyph": .65, "typosquat": .6, "keyword": .5}[bi["kind"]]
+        add("brand_imitation", w, f"Domain imitates {bi['brand'].upper()} ({bi['kind']}: {bi['detail']})",
+            f"النطاق ينتحل علامة {bi['brand'].upper()}")
+    if f["punycode"]:
+        add("punycode", .35, "Uses look-alike Unicode characters (punycode)", "يستخدم أحرفاً مشابهة (Punycode)")
+    if f["is_ip"]:
+        add("ip_host", .35, "Link points to a raw IP address", "الرابط يشير إلى عنوان IP مباشر")
+    if f["suspicious_tld"]:
+        add("tld", .15, f"High-abuse domain ending .{f['tld']}", "امتداد نطاق شائع الاستخدام في الاحتيال")
+    if f["free_host"]:
+        add("free_host", .15, "Hosted on a free website builder", "مستضاف على منصة مجانية")
+
+    age = (intel.get("whois") or {}).get("age_days")
+    if age is not None and age < 7:
+        add("new_domain", .5, f"Domain registered {age} days ago", f"تم تسجيل النطاق قبل {age} أيام")
+    elif age is not None and age < 30:
+        add("young_domain", .3, f"Domain registered {age} days ago", f"تم تسجيل النطاق قبل {age} يوماً")
+    ca = (intel.get("tls") or {}).get("cert_age_days")
+    if ca is not None and ca < 3:
+        add("new_cert", .2, "TLS certificate issued in the last 3 days", "شهادة أمان صادرة خلال آخر 3 أيام")
+
+    chain = sb.get("redirect_chain") or []
+    hosts = {c.split("/")[2] for c in chain if "://" in c}
+    if f["shortener"] or f.get("redirected_from") or len(chain) >= 3 or len(hosts) >= 3:
+        add("redirects", .2, f"Hidden behind {max(len(chain) - 1, 1)} redirect(s) / short link",
+            "مخفي خلف روابط تحويل أو رابط مختصر")
+    bv, fu = sb.get("bot_view") or {}, sb.get("final_url") or ""
+    if bv.get("final_url") and fu and bv["final_url"].split("/")[2] != fu.split("/")[2]:
+        add("cloaking", .45, "Shows different content to crawlers vs phones (cloaking)",
+            "يعرض محتوى مختلفاً لأدوات الفحص (إخفاء)")
+
+    asks = content.get("asks_for", [])
+    if "card" in asks or "cvv" in asks:
+        add("asks_card", .55, "Page asks for card number / CVV", "الصفحة تطلب رقم البطاقة")
+    if "otp" in asks:
+        add("asks_otp", .45, "Page asks for a one-time password (OTP)", "الصفحة تطلب رمز التحقق OTP")
+    if "emirates_id" in asks:
+        add("asks_eid", .4, "Page asks for Emirates ID", "الصفحة تطلب رقم الهوية الإماراتية")
+    if "password" in asks:
+        add("asks_password", .3, "Page has a login/password form", "الصفحة تحتوي نموذج تسجيل دخول")
+    if content.get("brands_mentioned"):
+        add("brand_text", .35, f"Page claims to be {', '.join(content['brands_mentioned']).upper()} on a non-official domain",
+            "الصفحة تدّعي أنها جهة رسمية على نطاق غير رسمي")
+    if content.get("urgency"):
+        add("urgency", .15, "Pressure language: " + ", ".join(content["urgency"][:3]), "لغة استعجال وتهديد")
+
+    if visual and visual.get("similarity", 0) >= .88 and visual.get("best_brand"):
+        pct = int(visual["similarity"] * 100)
+        add("visual_clone", .7, f"{pct}% visually similar to the real {visual['best_brand'].upper()} page",
+            f"مطابقة بصرية {pct}% مع الصفحة الرسمية")
+    if llm and llm.get("is_scam"):
+        c = float(llm.get("confidence", .5))
+        add("llm", .6 * c, f"AI analyst: {llm.get('intent', 'likely scam')}",
+            "المحلل الذكي: " + (llm.get("summary_ar") or "احتيال محتمل"))
+    if ml_p is not None and ml_p > .5:
+        add("ml_url", .5 * ml_p, f"URL pattern model: {int(ml_p * 100)}% phishing-like",
+            f"نموذج الروابط: {int(ml_p * 100)}% احتمال تصيد")
+
+    prod = 1.0
+    for s in S:
+        prod *= (1 - s["weight"])
+    sc = round(100 * (1 - prod))
+    S.sort(key=lambda s: -s["weight"])
+    return sc, verdict_for(sc), S

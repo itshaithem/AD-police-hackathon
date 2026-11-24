@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  body { font-family: Inter, "Noto Sans", "Noto Sans Arabic", "DejaVu Sans", sans-serif; color: #1F1F1F; font-size: 11px; line-height: 1.5; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+  h2 { font-size: 13px; font-weight: 600; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #E6E2D9; }
+  h3 { font-size: 12px; margin: 16px 0 6px; }
+  .muted { color: #8A8A85; }
+  .verdict { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid; font-weight: 600; }
+  .scam { color: #C8442F; } .suspicious { color: #C99A2E; } .safe { color: #6B8E5A; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; vertical-align: top; padding: 4px 6px; border-bottom: 1px solid #EFECE5; }
+  th { width: 30%; font-weight: 500; color: #5E5E5A; }
+  .mono { font-family: Menlo, "DejaVu Sans Mono", monospace; font-size: 9.5px; word-break: break-all; }
+  .grid { display: flex; gap: 12px; }
+  .grid > div { flex: 1; border: 1px solid #EFECE5; border-radius: 6px; padding: 10px; }
+  .rtl { direction: rtl; text-align: right; font-family: "Noto Sans Arabic", "IBM Plex Sans Arabic", sans-serif; }
+  .shots { display: flex; flex-wrap: wrap; gap: 10px; }
+  .shots figure { margin: 0; width: 31%; }
+  .shots img { width: 100%; border: 1px solid #E6E2D9; border-radius: 4px; }
+  .shots figcaption { font-size: 9px; color: #8A8A85; }
+  .scan { page-break-inside: avoid; }
+  footer { margin-top: 28px; font-size: 9px; color: #8A8A85; border-top: 1px solid #E6E2D9; padding-top: 6px; }
+</style>
+</head>
+<body>
+<div class="muted">ScamShield AI · Abu Dhabi Police × 42 Abu Dhabi</div>
+<h1>{{ title }}</h1>
+<div class="muted">Generated {{ generated_at }} UTC{% if case %} · Case {{ case.id }} · Status: {{ case.status }}{% endif %}</div>
+
+{% if case %}
+<h2>Case summary</h2>
+<div class="grid">
+  <div><b>English</b><p>{{ case_summary_en }}</p></div>
+  <div class="rtl"><b>العربية</b><p>{{ case_summary_ar }}</p></div>
+</div>
+{% if shared %}
+<h3>Shared indicators</h3>
+<table>{% for s in shared %}<tr><th>{{ s.type }}</th><td class="mono">{{ s.value }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% endif %}
+
+{% for s in scans %}
+<div class="scan">
+<h2>{{ s.domain }} — <span class="verdict {{ s.verdict }}">{{ s.verdict|upper }} · {{ s.score }}/100</span></h2>
+<table>
+  <tr><th>Scan ID</th><td class="mono">{{ s.id }}</td></tr>
+  <tr><th>Submitted URL</th><td class="mono">{{ s.url }}</td></tr>
+  <tr><th>Final URL</th><td class="mono">{{ s.final_url }}</td></tr>
+  <tr><th>Scanned (UTC)</th><td>{{ s.created_at }} → {{ s.completed_at }}</td></tr>
+  {% if s.brand %}<tr><th>Brand</th><td>{{ s.brand.id|upper }}</td></tr>{% endif %}
+</table>
+
+<h3>Why</h3>
+<div class="grid">
+  <div><ul>{% for r in s.reasons %}<li>{{ r.reason_en }}</li>{% endfor %}</ul></div>
+  <div class="rtl"><ul>{% for r in s.reasons %}<li>{{ r.reason_ar }}</li>{% endfor %}</ul></div>
+</div>
+
+{% if s.llm and (s.llm.summary_en or s.llm.summary_ar) %}
+<h3>AI summary</h3>
+<div class="grid">
+  <div>{{ s.llm.summary_en }}</div>
+  <div class="rtl">{{ s.llm.summary_ar }}</div>
+</div>
+{% endif %}
+
+{% if s.shots %}
+<h3>Screenshots (sandbox, in order)</h3>
+<div class="shots">
+  {% for sh in s.shots %}<figure><img src="{{ sh.src }}"><figcaption>{{ sh.label }} · <span class="mono">{{ sh.url }}</span></figcaption></figure>{% endfor %}
+</div>
+{% endif %}
+
+{% if s.redirect_chain %}
+<h3>Redirect chain</h3>
+<div class="mono">{{ s.redirect_chain|join(" → ") }}</div>
+{% endif %}
+
+<h3>Registration, hosting and TLS</h3>
+{% set w = s.intel.whois or {} %}{% set h = s.intel.hosting or {} %}{% set t = s.intel.tls or {} %}
+<table>
+  <tr><th>Registered</th><td>{{ w.created or "—" }}{% if w.age_days is number %} ({{ w.age_days }} days ago){% endif %}</td></tr>
+  <tr><th>Registrar</th><td>{{ w.registrar or "—" }}</td></tr>
+  <tr><th>Registrar abuse contact</th><td>{{ w.abuse_email or "—" }}</td></tr>
+  <tr><th>Hosting</th><td>{{ h.ip or "—" }} · {{ h.country or "—" }} · AS{{ h.asn or "—" }} {{ h.org or "" }}</td></tr>
+  <tr><th>TLS issuer</th><td class="mono">{{ t.issuer or "—" }}</td></tr>
+  <tr><th>TLS valid from</th><td>{{ t.not_before or "—" }}</td></tr>
+  <tr><th>DNS A / NS</th><td class="mono">{{ (s.intel.dns or {}).a|default([])|join(", ") }} / {{ (s.intel.dns or {}).ns|default([])|join(", ") }}</td></tr>
+</table>
+
+<h3>Evidence manifest (SHA-256)</h3>
+<table>{% for m in s.evidence_manifest %}<tr><th class="mono">{{ m.file }}</th><td class="mono">{{ m.sha256 }}</td></tr>{% endfor %}</table>
+</div>
+{% endfor %}
+
+<footer>Generated automatically by ScamShield AI in an isolated sandbox. No real personal data was submitted.</footer>
+</body>
+</html>

@@ -5,3 +5,10 @@ dist
 .env
 .env.*
 *.tsbuildinfo
+.venv/
+__pycache__/
+data/scamshield.db
+data/evidence/
+data/jobs/
+data/url_model.joblib
+.vite/
