@@ -108,7 +108,7 @@ export function scanFromApi(s: ApiScan): ScanView {
       age: ageBi(w.age_days), country: same(h.country || NA), ip: h.ip || NA, registrar: w.registrar || NA,
       detected: dateBi(s.created_at, true),
     },
-    pdfUrl: api.file(`/api/scans/${s.id}/report.pdf`),
+    pdfUrl: s.evidence_manifest.length ? api.file(`/api/scans/${s.id}/report.pdf`) : undefined,
   };
 }
 

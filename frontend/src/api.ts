@@ -9,10 +9,11 @@ declare global {
 
 const BASE = (window.SCAMSHIELD_API || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const PROXY = BASE === 'proxy';
-const KEY = PROXY ? '' : window.SCAMSHIELD_KEY || import.meta.env.VITE_API_KEY || 'change-me';
+const LITE = BASE === 'lite'; // Vercel-only deployment: /api/scan and /api/health on the same origin
+const KEY = PROXY || LITE ? '' : window.SCAMSHIELD_KEY || import.meta.env.VITE_API_KEY || 'change-me';
 
 /** Full URL for a backend path (which may carry its own query string). */
-const urlFor = (path: string) => (PROXY ? `/api/proxy?path=${encodeURIComponent(path)}` : BASE + path);
+const urlFor = (path: string) => (PROXY ? `/api/proxy?path=${encodeURIComponent(path)}` : LITE ? (path === '/health' ? '/api/health' : path) : BASE + path);
 
 export interface Reason { id: string; weight: number; reason_en: string; reason_ar: string }
 export interface Screenshot { index: number; label: string; url: string; path: string }
@@ -57,7 +58,7 @@ export interface ApiCase {
   redirect_chain?: string[];
 }
 export interface ApiJob { id: string; status: 'running' | 'done' | 'error'; total: number; done: number }
-export interface ApiHealth { backend: string; sandbox: string; llm: string; visual: string; discovery: string }
+export interface ApiHealth { backend: string; sandbox?: string; llm: string; visual?: string; discovery?: string; mode?: 'lite' }
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const isForm = opts.body instanceof FormData;

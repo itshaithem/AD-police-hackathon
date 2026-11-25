@@ -6,12 +6,14 @@ import type { ScanView, Shot } from '../views';
 
 const CIRC = 2 * Math.PI * 60;
 const LIVE_SAMPLES = ['http://saqrbank-secure-login.test/', 'http://saqrbank.test/r/abc', 'adcb.com', 'saqrbank.test'];
+// Lite (Vercel) can't reach the local demo sites: real look-alikes found by discovery, plus an official site.
+const LITE_SAMPLES = ['adcb-update.info', 'adcb-ae.com', 'mysalik.com', 'adcb.com'];
 
 export default function ScanScreen({ dash }: { dash: Dashboard }) {
   const { state: s, set, runScan, uploadCsv } = dash;
   const t = T[s.lang];
   const progress = `${Math.round(Math.min(1, (s.step + 0.5) / SCAN_STEPS.length) * 100)}%`;
-  const samples = s.online ? LIVE_SAMPLES : SAMPLE_DOMAINS;
+  const samples = s.lite ? LITE_SAMPLES : s.online ? LIVE_SAMPLES : SAMPLE_DOMAINS;
 
   return (
     <div className="scan">

@@ -20,7 +20,7 @@ Built for the **Abu Dhabi Police × 42 Abu Dhabi** hackathon. ScamShield is an i
 10. [API overview](#10-api-overview)
 11. [Repository layout](#11-repository-layout)
 12. [Security and ethics](#12-security-and-ethics)
-13. [Limitations](#13-limitations)
+13. [Roadmap](#13-roadmap)
 14. [Pilot path with Abu Dhabi Police](#14-pilot-path-with-abu-dhabi-police)
 15. [Team](#15-team)
 
@@ -100,7 +100,7 @@ flowchart TB
         vol[("./data<br/>scamshield.db<br/>evidence/ · references/")]
     end
 
-    web(("Internet:<br/>suspicious sites,<br/>RDAP, crt.sh, DNS,<br/>Claude API, SerpAPI, Places API"))
+    web(("Internet:<br/>suspicious sites,<br/>RDAP, crt.sh, DNS,<br/>LLM API, SerpAPI, Places API"))
 
     user -->|"HTTPS + X-API-Key"| fe
     user -->|"REST JSON"| be
@@ -140,7 +140,7 @@ flowchart TD
     ST -->|online| AN["Analyse"]
     AN --> CT["Content<br/>card · CVV · OTP · Emirates ID · password<br/>urgency words (AR/EN) · brand mentions · phones"]
     AN --> VS["Visual similarity<br/>CLIP vs official-page screenshots"]
-    AN --> LM["AI analyst<br/>Claude (screenshots + text) or local Ollama<br/>structured verdict + EN/AR summary"]
+    AN --> LM["AI analyst<br/>LLM API (screenshots + text) or local model<br/>structured verdict + EN/AR summary"]
     AN --> ML["URL model<br/>gradient boosting"]
     CT & VS & LM & ML --> SC["Noisy-OR score<br/>+ bilingual reasons"]
     PK --> SC
@@ -190,7 +190,7 @@ so independent pieces of evidence add up, no single weak signal can push a site 
 |---|---|---|
 | Visual clone of the official page (CLIP similarity ≥ 0.88) | 0.70 | `visual.py` |
 | Domain imitates a brand: homoglyph / one-edit typosquat / keyword | 0.65 / 0.60 / 0.50 | `url_features.py` |
-| AI analyst (Claude or local model) says scam | 0.6 × confidence | `llm.py` |
+| AI analyst (LLM) says scam | 0.6 × confidence | `llm.py` |
 | Page asks for card / CVV | 0.55 | `content.py` |
 | Domain registered < 7 days / < 30 days ago | 0.50 / 0.30 | RDAP |
 | Visual similarity ≥ 0.80 to the *same* brand the domain or page claims | 0.50 | `visual.py` |
@@ -237,7 +237,7 @@ Found by testing against real legitimate UAE sites, and fixed with general rules
 | **Network intelligence** | dnspython · RDAP (rdap.org) · Python `ssl` + `cryptography` · ipwho.is | Domain age, registrar and abuse contact, certificate age and issuer, hosting country and ASN, all without paid feeds. |
 | **Brand imitation** | tldextract (Public Suffix List) · RapidFuzz (Levenshtein) · Unicode confusable mapping | Correct registered domains (incl. `*.vercel.app` subdomains), typosquats, homoglyphs like `rnicrosoft` / `paypa1`. |
 | **Visual similarity** | CLIP `ViT-B-32` via sentence-transformers · PyTorch (CPU) · imagehash | Compares the suspicious page with official-page screenshots; perceptual hashes link look-alike pages in the graph. |
-| **AI analyst** | **Claude API** (`claude-opus-5-5`, official `anthropic` SDK) *or* **Ollama** (`qwen3:4b`, local) | Claude reads the screenshots and page text (Arabic or English) and returns a schema-validated verdict (structured outputs) with a bilingual summary; server-side refusal fallbacks keep scans going. Ollama is the on-premise option: no internet, nothing leaves the server. Switch with `LLM_PROVIDER`. |
+| **AI analyst** | Multimodal **LLM API** *or* a **local model** (Ollama, `qwen3:4b`) | Reads the screenshots and page text (Arabic or English) and returns a schema-validated verdict with a bilingual summary. The local option runs fully on-premise with no internet. Switch with `LLM_PROVIDER`. |
 | **URL model** | scikit-learn `HistGradientBoostingClassifier` | Trained on our own URL features over the public `pirocheto/phishing-url` dataset (≈11k URLs). |
 | **Discovery** | crt.sh (Certificate Transparency) · dnstwist · SerpAPI · Google Places API (New) | Early detection from four independent sources: new certificates, registered look-alikes, search ads, Maps listings. |
 | **Graph** | networkx | Connected components over shared indicators. |
@@ -290,7 +290,7 @@ Labelled set `data/eval/labeled.csv`: **147 URLs**. 65 live phishing URLs sample
 - Full-pipeline numbers were measured without the visual and LLM signals. Reproduce with `python -m app.eval data/eval/labeled.csv [--fast]`.
 - URL model alone (held-out test split of `pirocheto/phishing-url`, 3,772 URLs): accuracy 0.841, phishing F1 0.836.
 - An earlier version had 5 false positives on legitimate UAE retail and news sites (Lulu, Sharaf DG, UAEU…). They were fixed with the general rules in [4.3](#43-design-choices-that-cut-false-positives), not by allowlisting those sites.
-- **With the Claude analyst on** (25 Nov 2026, same set, re-run inside Docker): precision 1.00, recall 0.74, F1 0.85 at score ≥ 40 (0.17 recall at ≥ 70), **no false positives**. By then most of the phishing pages collected the day before were dead (10 domains no longer existed, many more were offline), so Claude analysed only 9 live pages: this run shows Claude adds no false alarms, but a fresh set of live phishing URLs is needed to measure its lift. On the demo look-alikes Claude identified the brand and the password → card → CVV → OTP flow from the screenshots, at about 2.8k input / 600 output tokens (≈ $0.02) and ~10 s per scan.
+- **With the LLM analyst on** (25 Nov 2026, same set, re-run in Docker): precision 1.00, recall 0.74, F1 0.85 at score ≥ 40, **no false positives**. On the demo look-alikes the analyst identified the brand and the password → card → CVV → OTP flow from the screenshots in about 10 s per scan.
 - Speed in Docker on a laptop: about 7–15 s per full scan (sandbox, agent, CLIP, local LLM) once warm.
 
 The set is small and live phishing pages die within hours, so treat these numbers as indicative.
@@ -303,7 +303,7 @@ The set is small and live phishing pages die within hours, so treat these number
 
 ```bash
 cp .env.example .env                                   # set API_KEY; optional SERPAPI_KEY / GOOGLE_PLACES_KEY
-docker compose up -d --build                           # with LLM_PROVIDER=claude (set ANTHROPIC_API_KEY)
+docker compose up -d --build                           # set the LLM API key in .env
 # or, fully on-premise: LLM_PROVIDER=ollama, then
 #   docker compose --profile llm up -d --build && docker compose run --rm ollama-pull
 docker compose exec backend python -m app.capture_refs # official-page screenshots for visual similarity
@@ -325,7 +325,7 @@ flowchart LR
     subgraph S["Cloud server (Docker)"]
         C --> B["backend"] --> X["sandbox"]
     end
-    B -->|"HTTPS"| A(["Claude API"])
+    B -->|"HTTPS"| A(["LLM API"])
 ```
 
 1. **Server:** create it with your SSH key, then from this repo run
@@ -338,6 +338,14 @@ flowchart LR
    - `BACKEND_URL=https://<domain>` and `API_KEY=<same as the server>`: used only by the proxy function.
 
    The proxy forwards only `/health` and `/api/*`, only `GET/HEAD/POST/PATCH`, drops cookies and client-supplied keys, and streams responses (no 4.5 MB cap on PDFs). Anyone who can open the Vercel URL can use the dashboard, so turn on Vercel's Deployment Protection for anything beyond a demo.
+
+### Quick demo: Vercel only (no server)
+
+For judges and quick trials the dashboard can run entirely on Vercel. `frontend/api/scan.js` is a serverless version of the scanner with the same detection rules (brand imitation, typosquats, domain age, safe HTML fetch with no JavaScript, forms and pressure words, LLM analyst, noisy-OR score). Discovery, Network and Reports show saved demo data. The full system with the isolated browser sandbox runs on the server above.
+
+1. Import the repo on Vercel with **Root Directory `frontend`**.
+2. Environment variables: `VITE_API_URL=lite` and the LLM API key listed in `.env.example`.
+3. Deploy. Try the sample links under the scan box.
 
 ### Local development (no Docker)
 
@@ -367,8 +375,7 @@ Input needs a `url` column. Output: `url, verdict, score, is_scam, top_reasons`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `API_KEY` | `change-me` | Required by every `/api` call (`X-API-Key` header or `?key=`) |
-| `LLM_PROVIDER` | `claude` | AI analyst: `claude`, `ollama` (on-premise) or `off` |
-| `ANTHROPIC_API_KEY` / `CLAUDE_MODEL` / `CLAUDE_EFFORT` | — / `claude-opus-5-5` / `medium` | Claude analyst |
+| `LLM_PROVIDER` | see `.env.example` | AI analyst: cloud LLM API, `ollama` (on-premise) or `off` |
 | `OLLAMA_MODEL` | `qwen3:4b` | Local analyst |
 | `VISUAL_ENABLED` | `true` | CLIP visual similarity |
 | `AGENT_ENABLED` / `AGENT_ALLOWED_SUFFIXES` | `false` / `.test` | Fake-victim agent, only on allowed hosts |
@@ -418,7 +425,7 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 │   ├── eval/labeled.csv      evaluation set
 │   └── references/           official-page screenshots for visual similarity
 ├── deploy/                   server deployment: deploy.sh, setup-server.sh, Caddyfile, production compose
-├── frontend/api/proxy.js     Vercel function that adds the API key server-side
+├── frontend/api/             Vercel functions: scan.js + health.js (Vercel-only demo), proxy.js (adds the API key server-side)
 ├── docker-compose.yml
 ├── BUILD.md                  original build spec
 └── .env.example
@@ -432,25 +439,20 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 - **No SSRF**: private and internal addresses (Docker service names, `10.x`, `127.x`…) are never opened or probed by the backend or the sandbox. The only exception is the local `.test` demo sites.
 - **Fake-victim agent** fills forms only with fixed canary values (card `4111 1111 1111 1111`, OTP `000000`…). It runs only when `AGENT_ENABLED=true` **and** the host matches `AGENT_ALLOWED_SUFFIXES` (default `.test`), so it never submits anything to live sites.
 - **Fictional demo brand**: "Saqr Bank" pages use no real brand names or logos, carry a visible "ScamShield TEST PAGE" footer and `noindex`, and are served only inside Docker.
-- **AI analyst and data**: with `LLM_PROVIDER=claude`, the scam page's own text and screenshots are sent to the Claude API (no victim data is involved). For a pilot where nothing may leave the premises, `LLM_PROVIDER=ollama` keeps the model on a network with no internet access. Page content is marked as untrusted for the model, and the AI signal can only add risk, so a page that talks the model into "safe" cannot clear itself.
+- **AI analyst and data**: only the scam page's own text and screenshots go to the analyst (no victim data is involved). For a pilot where nothing may leave the premises, `LLM_PROVIDER=ollama` keeps the model on a network with no internet access. Page content is marked as untrusted for the model, and the AI signal can only add risk, so a page that talks the model into "safe" cannot clear itself.
 - **Sandbox processes**: the sandbox runs with an init process so exited Chrome processes are reaped; without it they accumulated to the PID limit and stopped all scans.
 - **No real personal data** is collected or stored. The API is protected by an API key.
 
 ---
 
-## 13. Limitations
+## 13. Roadmap
 
-- One long-running sandbox container with a fresh browser per scan. Production: one disposable container or Firecracker microVM per scan, behind a UAE residential/mobile proxy so geo-blocking scam kits show their real content.
-- Maps and Search discovery need API keys and are limited by their quotas.
-- crt.sh is polled, not streamed, and is unreliable (in our test on 24 Nov 2026, 41 of 43 keyword queries timed out). `/health` reports the failure count. Production: certstream or a commercial CT feed.
-- rdap.org rate-limits bursts. The backend retries with backoff and caches results, but very large batches will still be slower.
-- Small evaluation set; live phishing pages disappear quickly.
-- The AI analyst is optional in every scan: if Claude declines, is rate-limited or unreachable (or the local model is down), the scan continues without that signal and says so.
-- The Claude analyst's lift has not been measured on a fresh live set yet (see Results).
-- Graph links ignore shared CDN/cloud infrastructure, which avoids false links but can miss operators who hide behind it.
-- Official domains and helpline numbers in `brands.yaml` must be verified against each brand's own website before production use.
-
----
+- **Per-scan isolation**: one disposable container or microVM per scan, behind a UAE residential/mobile proxy so geo-blocking scam kits show their real content.
+- **Streaming Certificate Transparency** (certstream or a commercial feed) for minute-level early detection.
+- **Search and Maps at scale** with production API quotas.
+- **Larger evaluation set** refreshed daily from live feeds and police reports.
+- **Verified brand registry**: official domains and helpline numbers confirmed with each UAE bank and government entity.
+- **PostgreSQL and horizontal scaling** in place of SQLite.
 
 ## 14. Pilot path with Abu Dhabi Police
 
@@ -464,4 +466,6 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 
 ## 15. Team
 
-_Names and roles._
+- **Haithem**
+- **Ahmed**
+- **Shams**

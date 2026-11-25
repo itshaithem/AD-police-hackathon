@@ -1,0 +1,867 @@
+// Generated from backend/app/brands.yaml. Re-generate when the registry changes.
+export default {
+ "brands": [
+  {
+   "id": "adcb",
+   "name": {
+    "en": "ADCB",
+    "ar": "بنك أبوظبي التجاري"
+   },
+   "official_domains": [
+    "adcb.com"
+   ],
+   "keywords": [
+    "adcb"
+   ],
+   "text_keywords": [
+    "ADCB",
+    "Abu Dhabi Commercial Bank",
+    "بنك أبوظبي التجاري"
+   ],
+   "phones": []
+  },
+  {
+   "id": "tamm",
+   "name": {
+    "en": "TAMM",
+    "ar": "تم"
+   },
+   "official_domains": [
+    "tamm.abudhabi"
+   ],
+   "keywords": [
+    "tamm"
+   ],
+   "text_keywords": [
+    "TAMM",
+    "تم أبوظبي"
+   ],
+   "phones": []
+  },
+  {
+   "id": "uaepass",
+   "name": {
+    "en": "UAE PASS",
+    "ar": "الهوية الرقمية"
+   },
+   "official_domains": [
+    "uaepass.ae"
+   ],
+   "keywords": [
+    "uaepass",
+    "uae-pass"
+   ],
+   "text_keywords": [
+    "UAE PASS",
+    "الهوية الرقمية"
+   ],
+   "phones": []
+  },
+  {
+   "id": "adpolice",
+   "name": {
+    "en": "Abu Dhabi Police",
+    "ar": "شرطة أبوظبي"
+   },
+   "official_domains": [
+    "adpolice.gov.ae"
+   ],
+   "keywords": [
+    "adpolice",
+    "abudhabipolice",
+    "adp-fines"
+   ],
+   "text_keywords": [
+    "Abu Dhabi Police",
+    "شرطة أبوظبي"
+   ],
+   "phones": []
+  },
+  {
+   "id": "emiratesnbd",
+   "name": {
+    "en": "Emirates NBD",
+    "ar": "بنك الإمارات دبي الوطني"
+   },
+   "official_domains": [
+    "emiratesnbd.com"
+   ],
+   "keywords": [
+    "emiratesnbd",
+    "enbd"
+   ],
+   "text_keywords": [
+    "Emirates NBD"
+   ],
+   "phones": []
+  },
+  {
+   "id": "fab",
+   "name": {
+    "en": "First Abu Dhabi Bank",
+    "ar": "بنك أبوظبي الأول"
+   },
+   "official_domains": [
+    "bankfab.com"
+   ],
+   "keywords": [
+    "bankfab",
+    "fab-bank"
+   ],
+   "text_keywords": [
+    "First Abu Dhabi Bank",
+    "بنك أبوظبي الأول"
+   ],
+   "phones": []
+  },
+  {
+   "id": "adib",
+   "name": {
+    "en": "ADIB",
+    "ar": "مصرف أبوظبي الإسلامي"
+   },
+   "official_domains": [
+    "adib.ae"
+   ],
+   "keywords": [
+    "adib"
+   ],
+   "text_keywords": [
+    "ADIB",
+    "مصرف أبوظبي الإسلامي"
+   ],
+   "phones": []
+  },
+  {
+   "id": "mashreq",
+   "name": {
+    "en": "Mashreq",
+    "ar": "المشرق"
+   },
+   "official_domains": [
+    "mashreq.com"
+   ],
+   "keywords": [
+    "mashreq"
+   ],
+   "text_keywords": [
+    "Mashreq"
+   ],
+   "phones": []
+  },
+  {
+   "id": "emiratespost",
+   "name": {
+    "en": "Emirates Post",
+    "ar": "بريد الإمارات"
+   },
+   "official_domains": [
+    "emiratespost.ae"
+   ],
+   "keywords": [
+    "emiratespost",
+    "empost"
+   ],
+   "text_keywords": [
+    "Emirates Post",
+    "بريد الإمارات"
+   ],
+   "phones": []
+  },
+  {
+   "id": "salik",
+   "name": {
+    "en": "Salik",
+    "ar": "سالك"
+   },
+   "official_domains": [
+    "salik.ae"
+   ],
+   "keywords": [
+    "salik"
+   ],
+   "text_keywords": [
+    "Salik",
+    "سالك"
+   ],
+   "phones": []
+  },
+  {
+   "id": "etisalat",
+   "name": {
+    "en": "e& (Etisalat)",
+    "ar": "اتصالات"
+   },
+   "official_domains": [
+    "etisalat.ae",
+    "eand.com"
+   ],
+   "keywords": [
+    "etisalat"
+   ],
+   "text_keywords": [
+    "Etisalat",
+    "اتصالات"
+   ],
+   "phones": []
+  },
+  {
+   "id": "uaegov",
+   "name": {
+    "en": "UAE Government",
+    "ar": "حكومة الإمارات"
+   },
+   "official_domains": [
+    "u.ae",
+    "moi.gov.ae"
+   ],
+   "keywords": [
+    "uae-gov",
+    "moi-uae"
+   ],
+   "text_keywords": [
+    "Ministry of Interior",
+    "وزارة الداخلية"
+   ],
+   "phones": []
+  },
+  {
+   "id": "aramex",
+   "name": {
+    "en": "Aramex",
+    "ar": "أرامكس"
+   },
+   "official_domains": [
+    "aramex.com"
+   ],
+   "keywords": [
+    "aramex"
+   ],
+   "text_keywords": [
+    "Aramex",
+    "أرامكس"
+   ],
+   "phones": []
+  },
+  {
+   "id": "rakbank",
+   "name": {
+    "en": "RAKBANK",
+    "ar": "بنك رأس الخيمة الوطني"
+   },
+   "official_domains": [
+    "rakbank.ae"
+   ],
+   "keywords": [
+    "rakbank"
+   ],
+   "text_keywords": [
+    "RAKBANK",
+    "بنك رأس الخيمة"
+   ],
+   "phones": []
+  },
+  {
+   "id": "dib",
+   "name": {
+    "en": "Dubai Islamic Bank",
+    "ar": "بنك دبي الإسلامي"
+   },
+   "official_domains": [
+    "dib.ae"
+   ],
+   "keywords": [
+    "dubaiislamic",
+    "dib-bank"
+   ],
+   "text_keywords": [
+    "Dubai Islamic Bank",
+    "بنك دبي الإسلامي"
+   ],
+   "phones": []
+  },
+  {
+   "id": "emiratesislamic",
+   "name": {
+    "en": "Emirates Islamic",
+    "ar": "الإمارات الإسلامي"
+   },
+   "official_domains": [
+    "emiratesislamic.ae"
+   ],
+   "keywords": [
+    "emiratesislamic"
+   ],
+   "text_keywords": [
+    "Emirates Islamic"
+   ],
+   "phones": []
+  },
+  {
+   "id": "cbd",
+   "name": {
+    "en": "Commercial Bank of Dubai",
+    "ar": "بنك دبي التجاري"
+   },
+   "official_domains": [
+    "cbd.ae"
+   ],
+   "keywords": [
+    "cbd-bank",
+    "cbdbank"
+   ],
+   "text_keywords": [
+    "Commercial Bank of Dubai",
+    "بنك دبي التجاري"
+   ],
+   "phones": []
+  },
+  {
+   "id": "dubaipolice",
+   "name": {
+    "en": "Dubai Police",
+    "ar": "شرطة دبي"
+   },
+   "official_domains": [
+    "dubaipolice.gov.ae"
+   ],
+   "keywords": [
+    "dubaipolice",
+    "dubai-police"
+   ],
+   "text_keywords": [
+    "Dubai Police",
+    "شرطة دبي"
+   ],
+   "phones": []
+  },
+  {
+   "id": "rta",
+   "name": {
+    "en": "RTA Dubai",
+    "ar": "هيئة الطرق والمواصلات"
+   },
+   "official_domains": [
+    "rta.ae"
+   ],
+   "keywords": [
+    "rta-dubai",
+    "rtadubai",
+    "rta-fines"
+   ],
+   "text_keywords": [
+    "Roads and Transport Authority",
+    "هيئة الطرق والمواصلات"
+   ],
+   "phones": []
+  },
+  {
+   "id": "dewa",
+   "name": {
+    "en": "DEWA",
+    "ar": "هيئة كهرباء ومياه دبي"
+   },
+   "official_domains": [
+    "dewa.gov.ae"
+   ],
+   "keywords": [
+    "dewa-",
+    "-dewa"
+   ],
+   "text_keywords": [
+    "DEWA",
+    "هيئة كهرباء ومياه دبي"
+   ],
+   "phones": []
+  },
+  {
+   "id": "du",
+   "name": {
+    "en": "du",
+    "ar": "دو"
+   },
+   "official_domains": [
+    "du.ae"
+   ],
+   "keywords": [
+    "du-telecom",
+    "du-recharge"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "emirates",
+   "name": {
+    "en": "Emirates",
+    "ar": "طيران الإمارات"
+   },
+   "official_domains": [
+    "emirates.com"
+   ],
+   "keywords": [
+    "emirates-airline",
+    "emiratesairline",
+    "flyemirates"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "etihad",
+   "name": {
+    "en": "Etihad Airways",
+    "ar": "الاتحاد للطيران"
+   },
+   "official_domains": [
+    "etihad.com"
+   ],
+   "keywords": [
+    "etihad"
+   ],
+   "text_keywords": [
+    "Etihad Airways"
+   ],
+   "phones": []
+  },
+  {
+   "id": "noon",
+   "name": {
+    "en": "noon",
+    "ar": "نون"
+   },
+   "official_domains": [
+    "noon.com"
+   ],
+   "keywords": [
+    "noon-uae",
+    "noonuae",
+    "noon-shop"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "adnoc",
+   "name": {
+    "en": "ADNOC",
+    "ar": "أدنوك"
+   },
+   "official_domains": [
+    "adnoc.ae"
+   ],
+   "keywords": [
+    "adnoc"
+   ],
+   "text_keywords": [
+    "ADNOC",
+    "أدنوك"
+   ],
+   "phones": []
+  },
+  {
+   "id": "microsoft",
+   "region": "global",
+   "name": {
+    "en": "Microsoft",
+    "ar": "مايكروسوفت"
+   },
+   "official_domains": [
+    "microsoft.com",
+    "microsoftonline.com",
+    "live.com",
+    "office.com",
+    "outlook.com",
+    "sharepoint.com",
+    "onedrive.com"
+   ],
+   "keywords": [
+    "microsoft",
+    "office365",
+    "outlook",
+    "onedrive",
+    "sharepoint",
+    "microsoftonline"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "paypal",
+   "region": "global",
+   "name": {
+    "en": "PayPal",
+    "ar": "باي بال"
+   },
+   "official_domains": [
+    "paypal.com"
+   ],
+   "keywords": [
+    "paypal"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "apple",
+   "region": "global",
+   "name": {
+    "en": "Apple",
+    "ar": "أبل"
+   },
+   "official_domains": [
+    "apple.com",
+    "icloud.com"
+   ],
+   "keywords": [
+    "apple",
+    "icloud",
+    "appleid"
+   ],
+   "strict": true,
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "amazon",
+   "region": "global",
+   "name": {
+    "en": "Amazon",
+    "ar": "أمازون"
+   },
+   "official_domains": [
+    "amazon.com",
+    "amazon.ae",
+    "amazon.co.uk",
+    "amazon.de",
+    "aws.amazon.com"
+   ],
+   "keywords": [
+    "amazon"
+   ],
+   "strict": true,
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "netflix",
+   "region": "global",
+   "name": {
+    "en": "Netflix",
+    "ar": "نتفليكس"
+   },
+   "official_domains": [
+    "netflix.com"
+   ],
+   "keywords": [
+    "netflix"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "dhl",
+   "region": "global",
+   "name": {
+    "en": "DHL",
+    "ar": "دي إتش إل"
+   },
+   "official_domains": [
+    "dhl.com",
+    "dhl.de"
+   ],
+   "keywords": [
+    "dhl"
+   ],
+   "strict": true,
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "fedex",
+   "region": "global",
+   "name": {
+    "en": "FedEx",
+    "ar": "فيديكس"
+   },
+   "official_domains": [
+    "fedex.com"
+   ],
+   "keywords": [
+    "fedex"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "meta",
+   "region": "global",
+   "name": {
+    "en": "Meta (Facebook / Instagram / WhatsApp)",
+    "ar": "ميتا"
+   },
+   "official_domains": [
+    "facebook.com",
+    "instagram.com",
+    "whatsapp.com",
+    "meta.com",
+    "fb.com"
+   ],
+   "keywords": [
+    "facebook",
+    "instagram",
+    "whatsapp"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "roblox",
+   "region": "global",
+   "name": {
+    "en": "Roblox",
+    "ar": "روبلوكس"
+   },
+   "official_domains": [
+    "roblox.com"
+   ],
+   "keywords": [
+    "roblox"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "binance",
+   "region": "global",
+   "name": {
+    "en": "Binance",
+    "ar": "بينانس"
+   },
+   "official_domains": [
+    "binance.com"
+   ],
+   "keywords": [
+    "binance"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "coinbase",
+   "region": "global",
+   "name": {
+    "en": "Coinbase",
+    "ar": "كوين بيس"
+   },
+   "official_domains": [
+    "coinbase.com"
+   ],
+   "keywords": [
+    "coinbase"
+   ],
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "amex",
+   "region": "global",
+   "name": {
+    "en": "American Express",
+    "ar": "أمريكان إكسبريس"
+   },
+   "official_domains": [
+    "americanexpress.com"
+   ],
+   "keywords": [
+    "americanexpress",
+    "amex"
+   ],
+   "strict": true,
+   "text_keywords": [],
+   "phones": []
+  },
+  {
+   "id": "saqrbank",
+   "name": {
+    "en": "Saqr Bank (fictional demo brand)",
+    "ar": "بنك صقر (علامة تجريبية)"
+   },
+   "official_domains": [
+    "saqrbank.test"
+   ],
+   "keywords": [
+    "saqrbank",
+    "saqr-bank"
+   ],
+   "text_keywords": [
+    "Saqr Bank",
+    "بنك صقر"
+   ],
+   "phones": [
+    "0400000000"
+   ]
+  }
+ ],
+ "extra_allowlist": [
+  "google.com",
+  "gov.ae",
+  "youtube.com",
+  "wikipedia.org",
+  "github.com",
+  "linkedin.com",
+  "cloudflare.com",
+  "nbf.ae",
+  "hsbc.ae",
+  "citibank.ae",
+  "wio.io",
+  "liv.me",
+  "ajmanbank.ae",
+  "sib.ae",
+  "adcbislamic.com",
+  "khaleejtimes.com",
+  "thenationalnews.com",
+  "gulfnews.com",
+  "wam.ae",
+  "dubai.ae",
+  "adgm.com",
+  "difc.ae"
+ ],
+ "allowlist_suffixes": [
+  ".gov.ae"
+ ],
+ "suspicious_tlds": [
+  "xyz",
+  "top",
+  "icu",
+  "shop",
+  "online",
+  "click",
+  "live",
+  "cfd",
+  "sbs",
+  "info",
+  "buzz",
+  "rest",
+  "monster",
+  "lol",
+  "support",
+  "help",
+  "site",
+  "website",
+  "cyou"
+ ],
+ "free_hosts": [
+  "vercel.app",
+  "netlify.app",
+  "github.io",
+  "pages.dev",
+  "web.app",
+  "firebaseapp.com",
+  "weebly.com",
+  "wixsite.com",
+  "000webhostapp.com",
+  "glitch.me",
+  "blogspot.com",
+  "sites.google.com",
+  "workers.dev",
+  "onrender.com",
+  "framer.app",
+  "framer.website",
+  "webflow.io",
+  "backblazeb2.com",
+  "r2.dev",
+  "ipfs.io",
+  "dweb.link",
+  "square.site",
+  "godaddysites.com",
+  "mystrikingly.com",
+  "yolasite.com",
+  "jimdosite.com",
+  "carrd.co",
+  "notion.site",
+  "replit.app",
+  "repl.co",
+  "surge.sh",
+  "herokuapp.com",
+  "azurewebsites.net",
+  "blob.core.windows.net",
+  "storage.googleapis.com",
+  "s3.amazonaws.com",
+  "ngrok-free.app",
+  "ngrok.io",
+  "trycloudflare.com",
+  "wordpress.com",
+  "myshopify.com",
+  "gitbook.io",
+  "typedream.app",
+  "start.page",
+  "railway.app",
+  "fly.dev",
+  "deno.dev",
+  "pythonanywhere.com"
+ ],
+ "shorteners": [
+  "bit.ly",
+  "tinyurl.com",
+  "t.co",
+  "rebrand.ly",
+  "cutt.ly",
+  "is.gd",
+  "s.id",
+  "shorturl.at",
+  "rb.gy",
+  "t.ly",
+  "ow.ly",
+  "goo.su"
+ ],
+ "urgency_keywords": {
+  "en": [
+   "urgent",
+   "suspended",
+   "blocked",
+   "verify your",
+   "update your",
+   "final notice",
+   "unpaid",
+   "fine",
+   "penalty",
+   "expire",
+   "within 24 hours",
+   "refund",
+   "prize"
+  ],
+  "ar": [
+   "عاجل",
+   "مخالفة",
+   "غرامة",
+   "سيتم إيقاف",
+   "تم إيقاف",
+   "تحديث بياناتك",
+   "تحديث البيانات",
+   "إشعار نهائي",
+   "مستحقات",
+   "استرداد",
+   "جائزة",
+   "خلال 24 ساعة",
+   "تحقق"
+  ]
+ },
+ "parking_hosts": [
+  "afternic.com",
+  "godaddy.com",
+  "sedo.com",
+  "dan.com",
+  "hugedomains.com",
+  "bodis.com",
+  "parkingcrew.net",
+  "sav.com",
+  "undeveloped.com",
+  "atom.com",
+  "squadhelp.com",
+  "porkbun.com",
+  "namecheap.com",
+  "spaceship.com",
+  "above.com"
+ ]
+};

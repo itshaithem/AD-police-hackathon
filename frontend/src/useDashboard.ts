@@ -14,6 +14,8 @@ export interface DashState {
   url: string;
   /** null while checking, then whether the backend answered /health. */
   online: boolean | null;
+  /** Lite deployment (Vercel only): live scans, saved demo data for the other screens. */
+  lite: boolean;
   scanning: boolean;
   step: number;
   /** 0→1 eased progress of the score gauge animation. */
@@ -58,7 +60,7 @@ const MOCK_CLUSTERS = clustersFromMock();
 export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
   const [state, setFull] = useState<DashState>(() => ({
     screen: initial?.screen ?? 'scan', lang: initial?.lang ?? 'en',
-    url: 'adcb-secure-login.com', online: null,
+    url: 'adcb-secure-login.com', online: null, lite: false,
     scanning: false, step: 0, anim: 1, shown: 99, scan: scanFromMock('adcb-secure-login.com'), scanError: null,
     live: [], now: Date.now(), demo: false, demoStep: 0,
     addedTo: null, downloaded: false, csvName: null, batch: null, filter: 'all', cluster: 'A', caseId: 'AD-2611', exported: null,
@@ -100,7 +102,7 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
   }, [set, animateResult]);
 
   const runScan = useCallback((input: string) => {
-    const online = stateRef.current.online;
+    const online = stateRef.current.online || stateRef.current.lite;
     const d = online ? input.trim() : normalizeDomain(input);
     if (!d) return;
     stopScan();
@@ -233,11 +235,12 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
   // ---------- lifecycle ----------
   useEffect(() => {
     const check = () => api.health().then(
-      // First time online: drop the mock sample result so only real scans are shown.
-      () => set((s) => (s.online === null && !s.scan?.id && !s.scanning
+      // Lite: live scanning only; the other screens keep the saved demo data (online stays false for them).
+      (h) => set(h.mode === 'lite' ? { lite: true, online: false } : (s) => (s.online === null && !s.scan?.id && !s.scanning
+        // First time online: drop the mock sample result so only real scans are shown.
         ? { online: true, scan: null, url: s.url === 'adcb-secure-login.com' ? '' : s.url }
         : { online: true })),
-      () => set({ online: false }),
+      () => set({ online: false, lite: false }),
     );
     check();
     const healthT = window.setInterval(check, 30000);
