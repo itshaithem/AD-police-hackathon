@@ -85,6 +85,16 @@ def set_discovery_scan(did, scan_id):
     _exec("UPDATE discoveries SET scan_id=? WHERE id=?", (scan_id, did))
 
 
+def list_unscanned(limit=50):
+    """Discoveries that never got a scan, newest first — the auto-scan backlog."""
+    out = []
+    for r in C.execute("SELECT * FROM discoveries WHERE scan_id IS NULL ORDER BY detected_at DESC LIMIT ?", (limit,)):
+        d = dict(r)
+        d["meta"] = json.loads(d["meta"] or "{}")
+        out.append(d)
+    return out
+
+
 def list_discoveries(source=None, limit=200):
     q, a = "SELECT * FROM discoveries", []
     if source:

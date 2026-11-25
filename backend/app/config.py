@@ -31,7 +31,16 @@ AGENT_ALLOWED_SUFFIXES = tuple(s.strip() for s in env("AGENT_ALLOWED_SUFFIXES", 
 SERPAPI_KEY = env("SERPAPI_KEY")
 GOOGLE_PLACES_KEY = env("GOOGLE_PLACES_KEY")
 DISCOVERY_ENABLED = flag("DISCOVERY_ENABLED", "true")
-DISCOVERY_INTERVAL_MIN = int(env("DISCOVERY_INTERVAL_MIN", "20"))
+DISCOVERY_INTERVAL_MIN = int(env("DISCOVERY_INTERVAL_MIN", "5"))
+# A cycle must fit inside DISCOVERY_INTERVAL_MIN or the interval stops meaning anything, so both
+# halves are capped: pollers get POLL_BUDGET_SEC, auto-scanning gets SCAN_BUDGET_SEC. Whatever is
+# left over waits in the backlog and later cycles drain it, so nothing is dropped.
+POLL_BUDGET_SEC = int(env("POLL_BUDGET_SEC", "120"))
+SCAN_BUDGET_SEC = int(env("SCAN_BUDGET_SEC", "120"))
+# A dnstwist sweep costs ~23s per official domain (~4k permutations, DNS-checked), so a full pass
+# over every brand would take half an hour. Rotate a few per cycle instead; ~88 domains at 3 per
+# 5-minute cycle is a complete sweep roughly every 2.5 hours.
+DNSTWIST_PER_CYCLE = int(env("DNSTWIST_PER_CYCLE", "3"))
 # Watchlist brands polled per discovery cycle; the rest wait their turn (200 keywords would be ~15k DNS probes at once).
 WATCHLIST_SLICE = int(env("WATCHLIST_SLICE", "25"))
 DEMO_MODE = flag("DEMO_MODE")
