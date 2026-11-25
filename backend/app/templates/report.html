@@ -16,6 +16,8 @@
   td, th { text-align: left; vertical-align: top; padding: 4px 6px; border-bottom: 1px solid #EFECE5; }
   th { width: 30%; font-weight: 500; color: #5E5E5A; }
   .mono { font-family: Menlo, "DejaVu Sans Mono", monospace; font-size: 9.5px; word-break: break-all; }
+  .nb { word-break: normal; white-space: nowrap; }
+  .official { width: 26%; }
   .grid { display: flex; gap: 12px; }
   .grid > div { flex: 1; border: 1px solid #EFECE5; border-radius: 6px; padding: 10px; }
   .rtl { direction: rtl; text-align: right; font-family: "Noto Sans Arabic", "IBM Plex Sans Arabic", sans-serif; }
@@ -31,6 +33,17 @@
 <div class="muted">ScamShield AI · Abu Dhabi Police × 42 Abu Dhabi</div>
 <h1>{{ title }}</h1>
 <div class="muted">Generated {{ generated_at }} UTC{% if case %} · Case {{ case.id }} · Status: {{ case.status }}{% endif %}</div>
+
+{% if sweep %}
+<h2>Search summary</h2>
+<table>
+  <tr><th>Search</th><td>{{ sweep.query }}</td></tr>
+  <tr><th>Brand matched</th><td>{{ sweep.brand_name or "none" }}</td></tr>
+  <tr><th>Listings checked</th><td>{{ sweep.checked }}</td></tr>
+  <tr><th>Impersonating</th><td>{{ sweep.flagged }}</td></tr>
+</table>
+{% if sweep.flagged == 0 %}<p class="muted">No impersonating listings found. Every result matches the official brand.</p>{% endif %}
+{% endif %}
 
 {% if case %}
 <h2>Case summary</h2>
@@ -50,8 +63,10 @@
 <table>
   <tr><th>Scan ID</th><td class="mono">{{ s.id }}</td></tr>
   <tr><th>Submitted URL</th><td class="mono">{{ s.url }}</td></tr>
-  <tr><th>Final URL</th><td class="mono">{{ s.final_url }}</td></tr>
-  <tr><th>Scanned (UTC)</th><td>{{ s.created_at }} → {{ s.completed_at }}</td></tr>
+{% if s.listing %}  <tr><th>Source</th><td>Google Maps listing{% if s.listing.demo %} · fictional demo data{% endif %}</td></tr>
+  <tr><th>Search</th><td>{{ s.listing.query }}</td></tr>
+{% else %}  <tr><th>Final URL</th><td class="mono">{{ s.final_url }}</td></tr>
+{% endif %}  <tr><th>Checked (UTC)</th><td>{{ s.created_at }} → {{ s.completed_at }}</td></tr>
   {% if s.brand %}<tr><th>Brand</th><td>{{ s.brand.id|upper }}</td></tr>{% endif %}
 </table>
 
@@ -69,6 +84,19 @@
 </div>
 {% endif %}
 
+{% if s.listing %}
+<h3>Listing evidence</h3>
+{% set g = s.listing %}
+<table>
+  <tr><th>Listing name</th><td>{{ g.name }}</td></tr>
+  <tr><th>Address</th><td>{{ g.address or "—" }}</td></tr>
+  <tr><th>Listed phone</th><td class="mono">{{ g.phone or "—" }}</td><td class="muted official">official: <span class="mono nb">{{ g.official_phones }}</span></td></tr>
+  <tr><th>Listed website</th><td class="mono">{{ g.website or "—" }}</td><td class="muted official">official: <span class="mono nb">{{ g.official_domains }}</span></td></tr>
+  <tr><th>Uses the brand name</th><td>{{ "yes" if g.claims_brand else "no" }}</td></tr>
+  <tr><th>Signals</th><td>{{ g.signals|join("; ") or "none" }}</td></tr>
+  <tr><th>Google Maps</th><td class="mono">{{ g.maps_url or "—" }}</td></tr>
+</table>
+{% else %}
 {% if s.shots %}
 <h3>Screenshots (sandbox, in order)</h3>
 <div class="shots">
@@ -92,9 +120,12 @@
   <tr><th>TLS valid from</th><td>{{ t.not_before or "—" }}</td></tr>
   <tr><th>DNS A / NS</th><td class="mono">{{ (s.intel.dns or {}).a|default([])|join(", ") }} / {{ (s.intel.dns or {}).ns|default([])|join(", ") }}</td></tr>
 </table>
+{% endif %}
 
+{% if s.evidence_manifest %}
 <h3>Evidence manifest (SHA-256)</h3>
 <table>{% for m in s.evidence_manifest %}<tr><th class="mono">{{ m.file }}</th><td class="mono">{{ m.sha256 }}</td></tr>{% endfor %}</table>
+{% endif %}
 </div>
 {% endfor %}
 

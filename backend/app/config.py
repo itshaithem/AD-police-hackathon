@@ -32,5 +32,7 @@ SERPAPI_KEY = env("SERPAPI_KEY")
 GOOGLE_PLACES_KEY = env("GOOGLE_PLACES_KEY")
 DISCOVERY_ENABLED = flag("DISCOVERY_ENABLED", "true")
 DISCOVERY_INTERVAL_MIN = int(env("DISCOVERY_INTERVAL_MIN", "20"))
+# Watchlist brands polled per discovery cycle; the rest wait their turn (200 keywords would be ~15k DNS probes at once).
+WATCHLIST_SLICE = int(env("WATCHLIST_SLICE", "25"))
 DEMO_MODE = flag("DEMO_MODE")
 SCAN_CONCURRENCY = int(env("SCAN_CONCURRENCY", "3"))

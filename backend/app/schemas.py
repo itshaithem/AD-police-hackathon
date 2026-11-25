@@ -10,6 +10,16 @@ class ScanRequest(BaseModel):
     fast: bool = False
 
 
+class PlacesScanRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=200)
+
+
+class WatchlistSave(BaseModel):
+    """Either a pasted textarea blob or an array; split and validated in watchlist.validate()."""
+    keywords: list[str] | str = ""
+    sites: list[str] | str = ""
+
+
 class CaseCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     scan_ids: list[str]

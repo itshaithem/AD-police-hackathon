@@ -4,6 +4,7 @@ import asyncio
 import dns.asyncresolver
 import dnstwist
 
+from .. import watchlist
 from ..pipeline.url_features import BRANDS
 
 UAE_PATTERNS = ["{kw}-uae", "{kw}-pay", "{kw}-secure", "{kw}-fines", "{kw}ae", "my{kw}", "{kw}-ae", "{kw}-online",
@@ -28,7 +29,7 @@ async def uae_variants():
     r.lifetime = 3
     cands = {}
     for b in BRANDS:
-        if b["id"] == "saqrbank":
+        if b["id"] == "saqrbank" or not watchlist.polls(b):
             continue
         for kw in b["keywords"]:
             for p in UAE_PATTERNS:
@@ -50,6 +51,8 @@ async def poll(include_dnstwist=True):
     out = await uae_variants()
     if include_dnstwist:
         for b in BRANDS:
+            if not watchlist.polls(b):
+                continue
             for od in b["official_domains"]:
                 if od.endswith(".test"):
                     continue

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS discoveries(id TEXT PRIMARY KEY, source TEXT, item TE
 CREATE TABLE IF NOT EXISTS cases(id TEXT PRIMARY KEY, title TEXT, status TEXT, created_at TEXT,
   scan_ids TEXT, cluster_id TEXT);
 CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, status TEXT, total INT, done INT, created_at TEXT, out_path TEXT);
+CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT);
 """)
 
 
@@ -36,6 +37,16 @@ def _exec(sql, args=()):
         cur = C.execute(sql, args)
         C.commit()
         return cur
+
+
+# ---------- kv (watchlist, rotation cursor) ----------
+def kv_get(k, default=None):
+    r = C.execute("SELECT v FROM kv WHERE k=?", (k,)).fetchone()
+    return json.loads(r["v"]) if r else default
+
+
+def kv_set(k, v):
+    _exec("INSERT OR REPLACE INTO kv VALUES(?,?)", (k, json.dumps(v, ensure_ascii=False)))
 
 
 # ---------- scans ----------

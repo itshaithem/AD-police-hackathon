@@ -236,3 +236,35 @@ button { font: inherit; }
 }
 .demo-count { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .demo-caption { flex: 1; font-size: 14px; line-height: 1.45; text-wrap: pretty; }
+
+/* ---------- Watchlist (Discovery) ---------- */
+.watchlist { padding: 0; }
+.watchlist > summary { display: flex; align-items: center; gap: 2px;
+  flex-wrap: wrap; padding: 14px 18px; cursor: pointer; font-size: 15px; list-style: none; }
+.watchlist > summary > span:first-of-type { margin-inline-end: auto; }
+.watchlist > summary::-webkit-details-marker { display: none; }
+.watchlist > summary::before { content: '\25B8'; color: var(--faint); margin-inline-end: 8px; }
+.watchlist[open] > summary::before { content: '\25BE'; }
+.watchlist > summary:hover { background: var(--surface-soft); }
+.wl-body { padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 14px;
+  border-block-start: 1px solid var(--line-soft); }
+.wl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.watchlist textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; font-size: 14px;
+  line-height: 1.6; padding: 10px 12px; color: var(--ink); background: var(--surface-soft);
+  border: 1px solid var(--line); border-radius: 10px; }
+.watchlist textarea:focus { outline: none; border-color: var(--accent-line); background: #fff; }
+.wl-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wl-foot .label { min-width: 0; overflow-wrap: anywhere; }
+.narrow .wl-grid { grid-template-columns: 1fr; }
+
+/* ---------- Maps listing scan ---------- */
+.places-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.place { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.place-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.place-name { font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.place-flags { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px;
+  font-size: 13px; color: var(--ink-2); }
+.place-acts { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+.place.clickable { cursor: pointer; transition: border-color .15s, background .15s; }
+.place.clickable:hover { border-color: var(--accent-line); background: var(--surface-soft); }
+.place.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -2,6 +2,7 @@
 import asyncio
 import contextlib
 import datetime as dt
+import hashlib
 import json
 import logging
 
@@ -9,13 +10,13 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Quer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
-from . import db, evidence, graph
+from . import db, evidence, graph, watchlist
 from .cli import read_urls, score_urls
-from .config import API_KEY, CORS_ORIGINS, DATA_DIR, DISCOVERY_ENABLED, EVIDENCE_DIR, LLM_PROVIDER
-from .discovery import loop as discovery
-from .pipeline import llm, run_scan, sandbox_client, visual
-from .pipeline.url_features import BRAND_BY_ID
-from .schemas import CaseCreate, CasePatch, ScanRequest
+from .config import API_KEY, CORS_ORIGINS, DATA_DIR, DISCOVERY_ENABLED, EVIDENCE_DIR, LLM_PROVIDER, WATCHLIST_SLICE
+from .discovery import loop as discovery, maps
+from .pipeline import llm, run_scan, sandbox_client, scoring, visual
+from .pipeline.url_features import BRAND_BY_ID, BRANDS, brand_by_name
+from .schemas import CaseCreate, CasePatch, PlacesScanRequest, ScanRequest, WatchlistSave
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,6 +29,7 @@ async def warm_up():
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
+    watchlist.reload()  # apply the saved watchlist before discovery starts polling
     task = asyncio.create_task(discovery.forever()) if DISCOVERY_ENABLED else None
     warm = asyncio.create_task(warm_up())
     yield
@@ -70,13 +72,84 @@ async def health():
     sb, lm = await asyncio.gather(sandbox_client.healthy(), llm.healthy())
     return {"backend": "ok", "db": "ok", "sandbox": "ok" if sb else "down", "llm": "ok" if lm else "down", "llm_provider": LLM_PROVIDER if lm else None,
             "visual": "ok" if visual._model is not None else ("down" if visual._failed or not visual.VISUAL_ENABLED else "idle"),
-            "discovery": "ok" if DISCOVERY_ENABLED else "down", "last_discovery": discovery.last_run or None}
+            "discovery": "ok" if DISCOVERY_ENABLED else "down", "places": maps.last_status["state"],
+            "last_discovery": discovery.last_run or None}
 
 
 # ---------------- scans ----------------
 @app.post("/api/scan", dependencies=[Depends(auth)])
 async def scan(req: ScanRequest):
     return await run_scan(req.url, agent=req.agent, fast=req.fast)
+
+
+@app.post("/api/scan/places", dependencies=[Depends(auth)])
+async def scan_places(req: PlacesScanRequest):
+    """On-demand Google Maps check: every listing for a query, scored against the brand it claims."""
+    b = BRAND_BY_ID.get(brand_by_name(req.query) or "")
+    return await maps.scan_query(req.query.strip(), b)
+
+
+def _sweep_or_404(sweep_id: str) -> dict:
+    sw = maps.get_sweep(sweep_id)
+    if not sw:
+        raise HTTPException(404, "search expired — run the Maps check again")
+    return sw
+
+
+def _place_or_404(sw: dict, place_id: str) -> dict:
+    p = next((x for x in sw["places"] if x["id"] == place_id), None)
+    if not p:
+        raise HTTPException(404, "listing not in this search")
+    return p
+
+
+@app.post("/api/scan/places/{sweep_id}/{place_id}/save", dependencies=[Depends(auth)])
+async def save_place(sweep_id: str, place_id: str):
+    """Persist a listing as a scan, so the existing report/case routes all apply to it."""
+    sw = _sweep_or_404(sweep_id)
+    saved = sw.setdefault("saved", {})
+    if place_id in saved and db.get_scan(saved[place_id]["scan_id"]):
+        return saved[place_id]  # idempotent: one listing, one scan row
+
+    p = _place_or_404(sw, place_id)
+    b = BRAND_BY_ID.get(sw.get("brand") or "")
+    scan = maps.listing_scan(p, b, sw["query"])
+
+    # Evidence pack: the listing itself, hashed, same chain-of-custody shape as a website scan.
+    ev = EVIDENCE_DIR / scan["id"]
+    ev.mkdir(parents=True, exist_ok=True)
+    blob = json.dumps(scan["listing"], indent=1, ensure_ascii=False).encode()
+    (ev / "listing.json").write_bytes(blob)
+    scan["evidence_manifest"] = [{"file": "listing.json", "sha256": hashlib.sha256(blob).hexdigest()}]
+
+    # A listing's website is a real site: scan it properly so the case carries a screenshot too.
+    website_scan_id = None
+    if p.get("website"):
+        try:
+            r = await asyncio.wait_for(run_scan(p["website"], source="maps"), timeout=120)
+            website_scan_id = r["id"]
+            scan["listing"]["website_scan_id"] = website_scan_id
+        except Exception as e:
+            logging.warning("website scan for listing %s failed: %s", place_id, e)
+
+    db.save_scan(scan)
+    (ev / "result.json").write_text(json.dumps(scan, indent=1, default=str), encoding="utf-8")
+    out = {"scan_id": scan["id"], "website_scan_id": website_scan_id}
+    saved[place_id] = out
+    db.kv_set(f"sweep_{sweep_id}", sw)
+    return out
+
+
+@app.get("/api/scan/places/{sweep_id}/report.pdf", dependencies=[Depends(auth)])
+async def sweep_pdf(sweep_id: str):
+    """One report for the whole search: what was checked, and every impersonating listing."""
+    sw = _sweep_or_404(sweep_id)
+    b = BRAND_BY_ID.get(sw.get("brand") or "")
+    flagged = [p for p in sw["places"] if p["score"] > 0]
+    scans = [maps.listing_scan(p, b, sw["query"]) for p in flagged]
+    head = {**sw, "checked": len(sw["places"]), "flagged": len(flagged)}
+    return Response(await evidence.build_sweep_pdf(head, scans), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="maps_{sweep_id}.pdf"'})
 
 
 @app.post("/api/scan/batch", dependencies=[Depends(auth)])
@@ -168,17 +241,23 @@ def reference(brand_id: str):
 
 
 # ---------------- discovery ----------------
+# A score filter has to look past the newest page: bulk look-alike candidates arrive in the
+# thousands, so the scored findings are rarely among the most recent rows. Same window /api/stats
+# counts over, so the tile and the filtered feed always agree.
+DISCOVERY_SCAN_WINDOW = 5000
+
+
 def _discovery_item(d: dict) -> dict:
     s = db.get_scan(d["scan_id"]) if d.get("scan_id") else None
     score = s["score"] if s else d["meta"].get("listing_score")
-    verdict = s["verdict"] if s else (None if score is None else "scam" if score >= 70 else "suspicious" if score >= 40 else "safe")
+    verdict = s["verdict"] if s else (None if score is None else scoring.verdict_for(score))
     brand = d.get("brand") or ((s or {}).get("brand") or {}).get("id")
     return {**d, "brand": brand, "score": score, "verdict": verdict}
 
 
 @app.get("/api/discovery", dependencies=[Depends(auth)])
 def discovery_list(source: str | None = None, min_score: int = 0, limit: int = 200):
-    items = [_discovery_item(d) for d in db.list_discoveries(source, limit * 3 if min_score else limit)]
+    items = [_discovery_item(d) for d in db.list_discoveries(source, DISCOVERY_SCAN_WINDOW if min_score else limit)]
     if min_score:
         items = [i for i in items if (i["score"] or 0) >= min_score]
     return items[:limit]
@@ -192,6 +271,35 @@ async def discovery_run(bg: BackgroundTasks, dnstwist: bool = False):
     return {"status": "started"}
 
 
+# ---------------- watchlist ----------------
+def _wl_view(wl: dict, extra: dict | None = None) -> dict:
+    wb = [b for b in BRANDS if b.get("wl")]
+    return {**wl, "brands": len(wb),
+            "pairs": {b["text_keywords"][0]: b["official_domains"] for b in wb},
+            # crt.sh is only polled for keywords of 4+ characters (ct_monitor.poll); tell the user which miss out.
+            "no_ct": [b["text_keywords"][0] for b in wb if not any(len(k) >= 4 for k in b["keywords"])],
+            "cursor": db.kv_get("wl_cursor", 0), "slice": WATCHLIST_SLICE, "max_entries": watchlist.MAX_ENTRIES,
+            "places": maps.last_status, **(extra or {})}
+
+
+@app.get("/api/watchlist", dependencies=[Depends(auth)])
+def watchlist_get():
+    return _wl_view(watchlist.load())
+
+
+@app.post("/api/watchlist", dependencies=[Depends(auth)])
+def watchlist_save(body: WatchlistSave, bg: BackgroundTasks):
+    try:
+        kws, sites, rejected = watchlist.validate(body.keywords, body.sites)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    wl = watchlist.save(kws, sites)
+    started = not discovery._running.locked()
+    if started:
+        bg.add_task(discovery.run_once, False)  # save reset the cursor, so the new entries run first
+    return _wl_view(wl, {"rejected": rejected, "run": "started" if started else "already running"})
+
+
 @app.get("/api/stats", dependencies=[Depends(auth)])
 def stats():
     since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24)).isoformat(timespec="seconds")
@@ -201,7 +309,7 @@ def stats():
     for i in items:
         by_source[i["source"]] = by_source.get(i["source"], 0) + 1
     total = db.C.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
-    return {"found_today": len(today), "high_risk": sum(1 for i in today if (i["score"] or 0) >= 70),
+    return {"found_today": len(today), "high_risk": sum(1 for i in today if (i["score"] or 0) >= scoring.SCAM_AT),
             "brands_targeted": len({i["brand"] for i in today if i["brand"]}), "scans_total": total, "by_source": by_source}
 
 

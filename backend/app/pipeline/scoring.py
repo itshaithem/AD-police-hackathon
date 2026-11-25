@@ -4,7 +4,7 @@ Each signal carries an English and an Arabic reason. Allowlisted official domain
 """
 from urllib.parse import urlsplit
 
-from .url_features import registered_domain
+from .url_features import brand_label, registered_domain
 
 SCAM_AT, SUSPICIOUS_AT = 70, 40
 
@@ -29,7 +29,7 @@ def not_registered_reasons(f: dict) -> list[dict]:
             "reason_en": "This domain does not exist: it is not registered and has no DNS records, so nothing can be opened here.",
             "reason_ar": "هذا النطاق غير موجود: غير مسجّل ولا توجد له سجلات DNS، لذلك لا يمكن فتح أي شيء على هذا العنوان."}]
     if f.get("brand_imitation"):
-        b = f["brand_imitation"]["brand"].upper()
+        b = brand_label(f["brand_imitation"]["brand"])
         out.append({"id": "watch_name", "weight": 0,
                     "reason_en": f"The name imitates {b}. If someone registers it, discovery will flag it.",
                     "reason_ar": f"الاسم ينتحل {b}. إذا سجّله أحد فسيُرصد تلقائياً."})
@@ -54,8 +54,8 @@ def score(f, intel, sb, content, visual, llm, ml_p):
     bi = f["brand_imitation"]
     if bi:
         w = {"homoglyph": .65, "typosquat": .6, "keyword": .5}[bi["kind"]]
-        add("brand_imitation", w, f"Domain imitates {bi['brand'].upper()} ({bi['kind']}: {bi['detail']})",
-            f"النطاق ينتحل علامة {bi['brand'].upper()}")
+        add("brand_imitation", w, f"Domain imitates {brand_label(bi['brand'])} ({bi['kind']}: {bi['detail']})",
+            f"النطاق ينتحل علامة {brand_label(bi['brand'])}")
     if f["punycode"]:
         add("punycode", .35, "Uses look-alike Unicode characters (punycode)", "يستخدم أحرفاً مشابهة (Punycode)")
     if f["is_ip"]:
@@ -101,7 +101,7 @@ def score(f, intel, sb, content, visual, llm, ml_p):
         add("asks_password", .3, "Page has a login/password form", "الصفحة تحتوي نموذج تسجيل دخول")
     # Mentioning a brand is normal (news, shops); it counts when the page also wants data or the domain imitates it.
     if content.get("brands_mentioned") and (asks or bi):
-        add("brand_text", .35, f"Page claims to be {', '.join(content['brands_mentioned']).upper()} on a non-official domain",
+        add("brand_text", .35, f"Page claims to be {', '.join(brand_label(x) for x in content['brands_mentioned'])} on a non-official domain",
             "الصفحة تدّعي أنها جهة رسمية على نطاق غير رسمي")
     if len(content.get("urgency", [])) >= 2 or (content.get("urgency") and asks):
         add("urgency", .15, "Pressure language: " + ", ".join(content["urgency"][:3]), "لغة استعجال وتهديد")
@@ -112,7 +112,7 @@ def score(f, intel, sb, content, visual, llm, ml_p):
         margin = vs - (others[0] if others else 0)
         claimed = {(bi or {}).get("brand")} | set(content.get("brands_mentioned") or [])
         pct = int(vs * 100)
-        en, ar = f"{pct}% visually similar to the real {vb.upper()} page", f"مطابقة بصرية {pct}% مع الصفحة الرسمية"
+        en, ar = f"{pct}% visually similar to the real {brand_label(vb)} page", f"مطابقة بصرية {pct}% مع الصفحة الرسمية"
         if vs >= .88:
             add("visual_clone", .7, en, ar)
         elif vs >= .80 and margin >= .03 and vb in claimed:

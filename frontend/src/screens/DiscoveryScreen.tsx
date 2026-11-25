@@ -1,6 +1,52 @@
 import { HIGH_RISK_THRESHOLD, L, T, colorOf, type Filter } from '../data';
 import type { Dashboard } from '../useDashboard';
 
+function Watchlist({ dash }: { dash: Dashboard }) {
+  const { state: s, set, saveWatchlist } = dash;
+  const t = T[s.lang], w = s.wl;
+  const count = s.wlKeywords.split('\n').filter((x) => x.trim()).length;
+  const max = w?.max_entries ?? 200;
+  const over = count > max;
+  // Anything else (invalid_key, disabled, error) reads as "the key was rejected".
+  const mapsText: Partial<Record<string, string>> = { ok: t.wlMapsOk, no_key: t.wlMapsNoKey, quota: t.wlMapsQuota, idle: '' };
+  const maps = mapsText[w?.places.state ?? 'idle'] ?? t.wlMapsBad;
+
+  return (
+    <details className="card watchlist" open={s.wlOpen} onToggle={(e) => set({ wlOpen: e.currentTarget.open })}>
+      <summary>
+        <span>{t.watchlist}</span>
+        <span className="label">{w?.brands ? `${w.brands} ${t.wlTargets}` : t.wlEmpty}{maps ? ` · ${maps}` : ''}</span>
+      </summary>
+      <div className="wl-body">
+        <p className="label">{t.wlSub}</p>
+        <div className="wl-grid">
+          <label className="stack-8">
+            <span className="label">{t.wlKeywords} <span dir="ltr" style={{ color: over ? '#C8442F' : undefined }}>{count} / {max}</span></span>
+            <textarea value={s.wlKeywords} dir="ltr" spellCheck={false} rows={7} placeholder={t.wlKwHint}
+                      onChange={(e) => set({ wlKeywords: e.target.value })} />
+          </label>
+          <label className="stack-8">
+            <span className="label">{t.wlSites}</span>
+            <textarea value={s.wlSites} dir="ltr" spellCheck={false} rows={7} placeholder={t.wlSiteHint}
+                      onChange={(e) => set({ wlSites: e.target.value })} />
+          </label>
+        </div>
+        <div className="wl-foot">
+          <span className="label">
+            {s.wlError ? s.wlError
+              : w?.rejected?.length ? `${t.wlSkipped}: ${w.rejected.map((r) => r.value).join(', ')}`
+              : w?.no_ct?.length ? `${t.wlNoCt}: ${w.no_ct.join(', ')}`
+              : w?.run === 'started' ? t.wlSaved : w?.run ? t.wlRunning : ''}
+          </span>
+          <button className="btn btn-primary" disabled={s.wlSaving || over} onClick={() => { void saveWatchlist(); }}>
+            {s.wlSaving ? t.wlSaving : t.wlSave}
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
 export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
   const { state: s, set, runScan, openScan, findings } = dash;
   const t = T[s.lang], ar = s.lang === 'ar', wide = !s.narrow;
@@ -14,9 +60,11 @@ export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
   const agoS = (sec: number) => (sec < 60 ? t.justNow : ago(Math.round(sec / 60)));
   const srcLabel = { cert: t.cert, search: t.search, maps: t.mapsSrc, lookalike: t.lookalike };
 
-  const rows = findings.filter((r) =>
-    s.filter === 'all' || (s.filter === 'web' && r.kind === 'web') || (s.filter === 'maps' && r.kind === 'maps')
-    || (s.filter === 'high' && (r.score ?? 0) >= HIGH_RISK_THRESHOLD));
+  // High risk comes from the server (it spans the whole table); the rest filter the recent page.
+  const rows = s.filter === 'high'
+    ? (s.online ? (s.apiHighRisk ?? []) : findings.filter((r) => (r.score ?? 0) >= HIGH_RISK_THRESHOLD))
+    : findings.filter((r) =>
+        s.filter === 'all' || (s.filter === 'web' && r.kind === 'web') || (s.filter === 'maps' && r.kind === 'maps'));
 
   const st = s.online ? s.apiStats : null;
   const liveHigh = s.live.filter((l) => l.row.score >= HIGH_RISK_THRESHOLD).length;
@@ -37,6 +85,8 @@ export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
           {t.liveLabel}
         </span>
       </div>
+
+      {s.online && <Watchlist dash={dash} />}
 
       <div className="stats">
         {stats.map((x) => (

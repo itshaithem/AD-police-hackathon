@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type ApiStats } from './api';
-import { LIVE_POOL, SCAN_STEPS, type Filter, type Finding, type Lang, type Screen } from './data';
+import { api, type ApiPlace, type ApiPlacesScan, type ApiStats, type ApiWatchlist } from './api';
+import { HIGH_RISK_THRESHOLD, LIVE_POOL, SCAN_STEPS, type Filter, type Finding, type Lang, type Screen } from './data';
 import {
   caseDetailFromApi, caseItemFromApi, casesFromMock, clustersFromApi, clustersFromMock, findingFromApi, findingsFromMock,
   scanFromApi, scanFromMock, type CaseDetail, type CaseItem, type ClusterView, type FindingView, type ScanView,
@@ -40,11 +40,32 @@ export interface DashState {
   narrow: boolean;
   // API data (online mode)
   apiFindings: FindingView[] | null;
+  /** High-risk rows, filtered server-side across the whole table (the recent page rarely holds them). */
+  apiHighRisk: FindingView[] | null;
   apiStats: ApiStats | null;
   apiClusters: ClusterView[] | null;
   apiCases: CaseItem[] | null;
   apiCase: CaseDetail | null;
   busy: boolean;
+  // Watchlist panel (Discovery)
+  wl: ApiWatchlist | null;
+  wlKeywords: string;
+  wlSites: string;
+  wlOpen: boolean;
+  wlSaving: boolean;
+  wlError: string | null;
+  // Maps-listing scan (Scan screen tab)
+  scanMode: 'web' | 'maps';
+  placesQuery: string;
+  places: ApiPlacesScan | null;
+  placesBusy: boolean;
+  placesError: string | null;
+  /** The listing opened as a full report, or null for the list view. */
+  placeDetail: ApiPlace | null;
+  placeBusy: boolean;
+  /** Scan id once the open listing has been persisted, so its PDF/case routes apply. */
+  placeScanId: string | null;
+  placeCase: string | null;
 }
 
 const NARROW_BELOW = 760;
@@ -65,7 +86,10 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     live: [], now: Date.now(), demo: false, demoStep: 0,
     addedTo: null, downloaded: false, csvName: null, batch: null, filter: 'all', cluster: 'A', caseId: 'AD-2611', exported: null,
     narrow: isNarrow(),
-    apiFindings: null, apiStats: null, apiClusters: null, apiCases: null, apiCase: null, busy: false,
+    apiFindings: null, apiHighRisk: null, apiStats: null, apiClusters: null, apiCases: null, apiCase: null, busy: false,
+    wl: null, wlKeywords: '', wlSites: '', wlOpen: false, wlSaving: false, wlError: null,
+    scanMode: 'web', placesQuery: 'ADCB customer service', places: null, placesBusy: false, placesError: null,
+    placeDetail: null, placeBusy: false, placeScanId: null, placeCase: null,
   }));
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -260,8 +284,29 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     let alive = true;
     const guard = (p: Partial<DashState>) => { if (alive) set(p); };
     if (state.screen === 'discovery') {
-      const load = () => Promise.all([api.discovery('?limit=200'), api.stats()])
-        .then(([d, st]) => guard({ apiFindings: d.map(findingFromApi), apiStats: st, now: Date.now() }))
+      const load = () => Promise.all([
+        api.discovery('?limit=200'),
+        api.stats(),
+        // The score filter must span the whole table, not the newest page: thousands of unscored
+        // look-alike candidates sit in front of the findings that actually matter.
+        api.discovery(`?min_score=${HIGH_RISK_THRESHOLD}&limit=2000`),
+      ])
+        .then(([d, st, high]) => guard({
+          apiFindings: d.map(findingFromApi),
+          apiStats: st,
+          // findingFromApi nulls the score for not_found/blocked; those don't belong in a score tab.
+          apiHighRisk: high.map(findingFromApi).filter((f) => f.score != null),
+          now: Date.now(),
+        }))
+        .catch(() => undefined);
+      api.watchlist()
+        .then((w) => {
+          if (!alive) return;
+          // Don't clobber boxes the user is mid-edit in; refresh the status either way.
+          set((cur) => (cur.wlSaving || cur.wlOpen
+            ? { wl: w }
+            : { wl: w, wlKeywords: w.keywords.join('\n'), wlSites: w.sites.join('\n') }));
+        })
         .catch(() => undefined);
       load();
       const iv = window.setInterval(load, 30000);
@@ -291,6 +336,75 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     return () => { alive = false; };
   }, [state.online, state.screen, state.caseId, set]);
 
+  const scanPlaces = useCallback(async (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    set({ placesQuery: q, placesBusy: true, placesError: null, places: null, placeDetail: null, placeScanId: null, placeCase: null });
+    try {
+      set({ places: await api.scanPlaces(q) });
+    } catch (e) {
+      set({ placesError: (e as Error).message.slice(0, 160) });
+    } finally {
+      set({ placesBusy: false });
+    }
+  }, [set]);
+
+  const openPlace = useCallback((p: ApiPlace | null) => {
+    set({ placeDetail: p, placeScanId: null, placeCase: null, placesError: null });
+  }, [set]);
+
+  /** Persist the open listing once; its id then unlocks the normal report and case routes. */
+  const ensurePlaceSaved = useCallback(async (): Promise<string | null> => {
+    const s = stateRef.current;
+    if (s.placeScanId) return s.placeScanId;
+    if (!s.places?.sweep_id || !s.placeDetail) return null;
+    const { scan_id } = await api.savePlace(s.places.sweep_id, s.placeDetail.id);
+    set({ placeScanId: scan_id });
+    return scan_id;
+  }, [set]);
+
+  const downloadPlace = useCallback(async () => {
+    set({ placeBusy: true, placesError: null });
+    try {
+      const id = await ensurePlaceSaved();
+      if (id) window.open(api.file(`/api/scans/${id}/report.pdf`), '_blank', 'noopener');
+    } catch (e) {
+      set({ placesError: (e as Error).message.slice(0, 160) });
+    } finally {
+      set({ placeBusy: false });
+    }
+  }, [set, ensurePlaceSaved]);
+
+  const addPlaceToCase = useCallback(async () => {
+    set({ placeBusy: true, placesError: null });
+    try {
+      const id = await ensurePlaceSaved();
+      if (!id) return;
+      const cases = await api.cases();
+      const open = cases.find((c) => c.status === 'open');
+      const name = stateRef.current.placeDetail?.name ?? 'Maps listing';
+      const c = open ? await api.addToCase(open.id, [id]) : await api.createCase({ title: `${name} investigation`, scan_ids: [id] });
+      set({ placeCase: c.id, apiCases: null });
+    } catch (e) {
+      set({ placesError: (e as Error).message.slice(0, 160) });
+    } finally {
+      set({ placeBusy: false });
+    }
+  }, [set, ensurePlaceSaved]);
+
+  const saveWatchlist = useCallback(async () => {
+    const { wlKeywords, wlSites } = stateRef.current;
+    set({ wlSaving: true, wlError: null });
+    try {
+      const w = await api.saveWatchlist({ keywords: wlKeywords, sites: wlSites });
+      set({ wl: w, wlKeywords: w.keywords.join('\n'), wlSites: w.sites.join('\n') });
+    } catch (e) {
+      set({ wlError: (e as Error).message.slice(0, 160) });
+    } finally {
+      set({ wlSaving: false });
+    }
+  }, [set]);
+
   // ---------- derived data (API when online, mock otherwise) ----------
   const s = state;
   const findings: FindingView[] = s.online ? (s.apiFindings ?? []) : findingsFromMock(s.now, s.live);
@@ -301,7 +415,7 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     : (MOCK_CASES.find((c) => c.id === s.caseId) ?? null);
 
   return {
-    state, set, runScan, openScan, toggleDemo, download, addToCase, uploadCsv, generateReport, exportCase,
+    state, set, runScan, openScan, toggleDemo, download, addToCase, uploadCsv, generateReport, exportCase, saveWatchlist, scanPlaces, openPlace, downloadPlace, addPlaceToCase,
     findings, clusters, caseList, caseDetail,
   };
 }

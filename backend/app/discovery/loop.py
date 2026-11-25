@@ -2,7 +2,7 @@
 import asyncio
 import logging
 
-from .. import db
+from .. import db, watchlist
 from ..config import DISCOVERY_INTERVAL_MIN, SCAN_CONCURRENCY
 from ..pipeline import run_scan
 from . import ct_monitor, lookalikes, maps, search
@@ -30,6 +30,7 @@ async def run_once(include_dnstwist=False) -> dict:
     if _running.locked():
         return {"status": "already running"}
     async with _running:
+        wl_active = watchlist.rotate()  # this cycle's slice of the watchlist; built-in brands always run
         results = await asyncio.gather(ct_monitor.poll(), lookalikes.poll(include_dnstwist), search.poll(), maps.poll(),
                                        return_exceptions=True)
         counts, tasks = {}, []
@@ -45,7 +46,8 @@ async def run_once(include_dnstwist=False) -> dict:
                     n += 1
                     tasks.append(_scan_item(did, d))
             counts[name] = n
-        last_run.update(at=db.now(), counts=counts, ct_queries_failed=f"{ct_monitor.last_stats['failed']}/{ct_monitor.last_stats['queries']}")
+        last_run.update(at=db.now(), counts=counts, watchlist_active=len(wl_active), places=maps.last_status["state"],
+                        ct_queries_failed=f"{ct_monitor.last_stats['failed']}/{ct_monitor.last_stats['queries']}")
     await asyncio.gather(*tasks)
     return counts
 

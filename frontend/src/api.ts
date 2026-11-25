@@ -42,6 +42,23 @@ export interface ApiDiscovery {
   detected_at: string; scan_id: string | null; score: number | null; verdict: string | null;
   meta: { name?: string; phone?: string; website?: string; listing_score?: number; [k: string]: unknown };
 }
+export interface ApiPlace {
+  id: string; name: string; phone: string | null; website: string | null; address: string | null;
+  maps_url: string | null; claims_brand: boolean; flags: string[]; score: number; demo?: boolean;
+  reasons: { id: string; reason_en: string; reason_ar: string }[];
+}
+export interface ApiPlacesScan {
+  query: string; status: string; detail?: string | null; demo?: boolean; sweep_id?: string;
+  brand?: string | null; brand_name?: string | null; official_domains?: string[];
+  official_phones?: string; places: ApiPlace[];
+}
+export interface ApiPlaces { state: 'no_key' | 'idle' | 'ok' | 'invalid_key' | 'disabled' | 'quota' | 'error'; detail: string | null; at: string | null }
+export interface ApiWatchlist {
+  keywords: string[]; sites: string[]; saved_at: string | null;
+  brands: number; pairs: Record<string, string[]>; no_ct: string[];
+  cursor: number; slice: number; max_entries: number; places: ApiPlaces;
+  rejected?: { value: string; reason: string }[]; run?: string;
+}
 export interface ApiStats { found_today: number; high_risk: number; brands_targeted: number; scans_total: number; by_source: Record<string, number> }
 export interface ApiIndicator { type: string; label: string; value: string; domains: number }
 export interface ApiCluster {
@@ -58,7 +75,7 @@ export interface ApiCase {
   redirect_chain?: string[];
 }
 export interface ApiJob { id: string; status: 'running' | 'done' | 'error'; total: number; done: number }
-export interface ApiHealth { backend: string; sandbox?: string; llm: string; visual?: string; discovery?: string; mode?: 'lite' }
+export interface ApiHealth { backend: string; sandbox?: string; llm: string; visual?: string; discovery?: string; places?: string; mode?: 'lite' }
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const isForm = opts.body instanceof FormData;
@@ -82,11 +99,17 @@ export const api = {
   },
   scan: (url: string, agent = false) => req<ApiScan>('/api/scan', { method: 'POST', body: JSON.stringify({ url, agent }) }),
   scanById: (id: string) => req<ApiScan>(`/api/scans/${id}`),
+  scanPlaces: (query: string) => req<ApiPlacesScan>('/api/scan/places', { method: 'POST', body: JSON.stringify({ query }) }),
+  savePlace: (sweep: string, placeId: string) =>
+    req<{ scan_id: string; website_scan_id: string | null }>(`/api/scan/places/${sweep}/${encodeURIComponent(placeId)}/save`, { method: 'POST' }),
   batch: (file: File) => { const f = new FormData(); f.append('file', file); return req<{ job_id: string; total: number }>('/api/scan/batch', { method: 'POST', body: f }); },
   job: (id: string) => req<ApiJob>(`/api/jobs/${id}`),
   discovery: (q = '') => req<ApiDiscovery[]>(`/api/discovery${q}`),
   runDiscovery: () => req<{ status: string }>('/api/discovery/run', { method: 'POST' }),
   stats: () => req<ApiStats>('/api/stats'),
+  watchlist: () => req<ApiWatchlist>('/api/watchlist'),
+  saveWatchlist: (body: { keywords: string; sites: string }) =>
+    req<ApiWatchlist>('/api/watchlist', { method: 'POST', body: JSON.stringify(body) }),
   graph: () => req<ApiGraph>('/api/graph'),
   cases: () => req<ApiCase[]>('/api/cases'),
   caseById: (id: string) => req<ApiCase>(`/api/cases/${id}`),
