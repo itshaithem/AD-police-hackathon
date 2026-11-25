@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from . import db, evidence, graph
 from .cli import read_urls, score_urls
-from .config import API_KEY, CORS_ORIGINS, DATA_DIR, DISCOVERY_ENABLED, EVIDENCE_DIR
+from .config import API_KEY, CORS_ORIGINS, DATA_DIR, DISCOVERY_ENABLED, EVIDENCE_DIR, LLM_PROVIDER
 from .discovery import loop as discovery
 from .pipeline import llm, run_scan, sandbox_client, visual
 from .pipeline.url_features import BRAND_BY_ID
@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 async def warm_up():
     """Load CLIP and the local model into memory at startup, so the first demo scan isn't the slow one."""
     await asyncio.to_thread(visual.available)
-    await llm.analyze("http://warmup.invalid", False, {"title": "", "asks_for": [], "text_excerpt": "warm-up"})
+    await llm.warm_up()
 
 
 @contextlib.asynccontextmanager
@@ -68,7 +68,7 @@ def summary(s: dict) -> dict:
 @app.get("/health")
 async def health():
     sb, lm = await asyncio.gather(sandbox_client.healthy(), llm.healthy())
-    return {"backend": "ok", "db": "ok", "sandbox": "ok" if sb else "down", "llm": "ok" if lm else "down",
+    return {"backend": "ok", "db": "ok", "sandbox": "ok" if sb else "down", "llm": "ok" if lm else "down", "llm_provider": LLM_PROVIDER if lm else None,
             "visual": "ok" if visual._model is not None else ("down" if visual._failed or not visual.VISUAL_ENABLED else "idle"),
             "discovery": "ok" if DISCOVERY_ENABLED else "down", "last_discovery": discovery.last_run or None}
 

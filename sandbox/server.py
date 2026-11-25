@@ -168,10 +168,15 @@ async def visit(req: VisitReq):
     if HOST_RULES:
         args.append(f"--host-resolver-rules={HOST_RULES}")
     async with async_playwright() as p:
-        browser = await p.chromium.launch(args=args)
-        ctx = await browser.new_context(**p.devices["iPhone 13"], locale="ar-AE",
-                                        timezone_id="Asia/Dubai", ignore_https_errors=True)
-        page = await ctx.new_page()
+        try:
+            browser = await p.chromium.launch(args=args)
+            ctx = await browser.new_context(**p.devices["iPhone 13"], locale="ar-AE",
+                                            timezone_id="Asia/Dubai", ignore_https_errors=True)
+            page = await ctx.new_page()
+        except Exception as e:  # browser could not start: report it instead of a 500
+            out["error"] = f"sandbox browser failed to start: {str(e)[:300]}"
+            out["bot_view"] = await bot_task
+            return out
         page.on("request", lambda r: len(out["network"]) < 400 and out["network"].append(
             {"url": r.url, "method": r.method, "type": r.resource_type}))
         try:

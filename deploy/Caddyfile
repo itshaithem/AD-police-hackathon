@@ -1,0 +1,10 @@
+# Public HTTPS entry point. Caddy gets and renews the TLS certificate automatically.
+# DOMAIN comes from .env (a real domain, or <server-ip>.sslip.io).
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy backend:8000 {
+		transport http {
+			read_timeout 180s
+		}
+	}
+}

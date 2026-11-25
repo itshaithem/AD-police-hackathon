@@ -1,12 +1,18 @@
 // API client for the ScamShield backend (BUILD.md section 10).
 // Configure with VITE_API_URL / VITE_API_KEY at build time, or window.SCAMSHIELD_API / SCAMSHIELD_KEY at runtime.
+// VITE_API_URL=proxy (Vercel): requests go through the /api/proxy function, which adds the key server-side,
+// so no key is shipped to the browser.
 
 declare global {
   interface Window { SCAMSHIELD_API?: string; SCAMSHIELD_KEY?: string }
 }
 
 const BASE = (window.SCAMSHIELD_API || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
-const KEY = window.SCAMSHIELD_KEY || import.meta.env.VITE_API_KEY || 'change-me';
+const PROXY = BASE === 'proxy';
+const KEY = PROXY ? '' : window.SCAMSHIELD_KEY || import.meta.env.VITE_API_KEY || 'change-me';
+
+/** Full URL for a backend path (which may carry its own query string). */
+const urlFor = (path: string) => (PROXY ? `/api/proxy?path=${encodeURIComponent(path)}` : BASE + path);
 
 export interface Reason { id: string; weight: number; reason_en: string; reason_ar: string }
 export interface Screenshot { index: number; label: string; url: string; path: string }
@@ -55,9 +61,9 @@ export interface ApiHealth { backend: string; sandbox: string; llm: string; visu
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const isForm = opts.body instanceof FormData;
-  const r = await fetch(BASE + path, {
+  const r = await fetch(urlFor(path), {
     ...opts,
-    headers: { 'X-API-Key': KEY, ...(opts.body && !isForm ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) },
+    headers: { ...(KEY ? { 'X-API-Key': KEY } : {}), ...(opts.body && !isForm ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) },
   });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
   return r.json() as Promise<T>;
@@ -68,7 +74,7 @@ export const api = {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 4000);
     try {
-      const r = await fetch(BASE + '/health', { signal: ctl.signal });
+      const r = await fetch(urlFor('/health'), { signal: ctl.signal });
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     } finally { clearTimeout(t); }
@@ -88,5 +94,5 @@ export const api = {
   addToCase: (id: string, scanIds: string[]) =>
     req<ApiCase>(`/api/cases/${id}`, { method: 'PATCH', body: JSON.stringify({ add_scan_ids: scanIds }) }),
   /** URL for <img> tags and downloads (backend also accepts ?key=). */
-  file: (path: string) => `${BASE}${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(KEY)}`,
+  file: (path: string) => (PROXY ? urlFor(path) : `${BASE}${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(KEY)}`),
 };

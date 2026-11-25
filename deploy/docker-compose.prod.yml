@@ -1,0 +1,26 @@
+# Production overrides for a cloud server:
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build backend sandbox demo-sites caddy
+# The dashboard is hosted on Vercel, so the frontend container is not started here.
+services:
+  backend:
+    ports: !reset []             # only reachable through Caddy
+    restart: unless-stopped
+
+  demo-sites:                    # fictional demo pages: reachable by the sandbox only, never published
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment: ["DOMAIN=${DOMAIN:?set DOMAIN in .env}"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [backend]
+    networks: [egress]
+    restart: unless-stopped
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

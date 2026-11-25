@@ -95,7 +95,8 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
     steps = [] if f.get("parked") else sb.get("steps", [])
     c = content_mod.analyze(steps, bool(f["official_brand"]))
     v = await asyncio.to_thread(visual.compare, steps[0]["png_b64"]) if steps else None
-    lm = await llm.analyze(f["url"], bool(f["official_brand"]), c) if steps and not f["allowlisted"] else None
+    shots_b64 = [steps[0]["png_b64"]] + ([steps[-1]["png_b64"]] if len(steps) > 1 else []) if steps else []
+    lm = await llm.analyze(f["url"], bool(f["official_brand"]), c, shots_b64) if steps and not f["allowlisted"] else None
     mp = None if f.get("parked") else ml_model.predict(f)
     sc, verdict, reasons = scoring.score(f, intel, sb, c, v, lm, mp)
 
@@ -112,7 +113,8 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
 
     ev, manifest, shots = _write_evidence(sid, steps, sb, intel)
     if sc >= scoring.SUSPICIOUS_AT:
-        brand_id = (f["brand_imitation"] or {}).get("brand") or (c["brands_mentioned"] or [None])[0] or (v or {}).get("best_brand")
+        brand_id = ((f["brand_imitation"] or {}).get("brand") or (c["brands_mentioned"] or [None])[0]
+                    or url_features.brand_by_name((lm or {}).get("impersonated_brand")) or (v or {}).get("best_brand"))
     else:
         brand_id = f["official_brand"]
     result = {

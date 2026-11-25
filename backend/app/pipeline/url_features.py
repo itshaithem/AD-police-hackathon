@@ -36,6 +36,18 @@ def official_brand(domain: str):
     return None
 
 
+def brand_by_name(name: str | None) -> str | None:
+    """Map a brand name (e.g. from the AI analyst, English or Arabic) to a registry id."""
+    if not name:
+        return None
+    n = name.strip().lower()
+    for b in BRANDS:
+        names = [b["name"]["en"], b["name"]["ar"], *b.get("text_keywords", []), *b["keywords"]]
+        if any(x and (x.lower() == n or (len(x) >= 4 and x.lower() in n)) for x in names):
+            return b["id"]
+    return None
+
+
 def is_allowlisted(domain: str) -> bool:
     d = domain.lower()
     if official_brand(d):
