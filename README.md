@@ -426,33 +426,10 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 
 ---
 
-## 12. Security and ethics
 
-- **Suspicious links are opened only in the sandbox container**: read-only filesystem, all Linux capabilities dropped, `no-new-privileges`, memory/CPU/PID limits, non-root user, fresh browser context per scan.
-- **No SSRF**: private and internal addresses (Docker service names, `10.x`, `127.x`…) are never opened or probed by the backend or the sandbox. The only exception is the local `.test` demo sites.
-- **Fake-victim agent** fills forms only with fixed canary values (card `4111 1111 1111 1111`, OTP `000000`…). It runs only when `AGENT_ENABLED=true` **and** the host matches `AGENT_ALLOWED_SUFFIXES` (default `.test`), so it never submits anything to live sites.
-- **Fictional demo brand**: "Saqr Bank" pages use no real brand names or logos, carry a visible "ScamShield TEST PAGE" footer and `noindex`, and are served only inside Docker.
-- **AI analyst and data**: with `LLM_PROVIDER=claude`, the scam page's own text and screenshots are sent to the Claude API (no victim data is involved). For a pilot where nothing may leave the premises, `LLM_PROVIDER=ollama` keeps the model on a network with no internet access. Page content is marked as untrusted for the model, and the AI signal can only add risk, so a page that talks the model into "safe" cannot clear itself.
-- **Sandbox processes**: the sandbox runs with an init process so exited Chrome processes are reaped; without it they accumulated to the PID limit and stopped all scans.
-- **No real personal data** is collected or stored. The API is protected by an API key.
 
----
 
-## 13. Limitations
-
-- One long-running sandbox container with a fresh browser per scan. Production: one disposable container or Firecracker microVM per scan, behind a UAE residential/mobile proxy so geo-blocking scam kits show their real content.
-- Maps and Search discovery need API keys and are limited by their quotas.
-- crt.sh is polled, not streamed, and is unreliable (in our test on 24 Nov 2026, 41 of 43 keyword queries timed out). `/health` reports the failure count. Production: certstream or a commercial CT feed.
-- rdap.org rate-limits bursts. The backend retries with backoff and caches results, but very large batches will still be slower.
-- Small evaluation set; live phishing pages disappear quickly.
-- The AI analyst is optional in every scan: if Claude declines, is rate-limited or unreachable (or the local model is down), the scan continues without that signal and says so.
-- The Claude analyst's lift has not been measured on a fresh live set yet (see Results).
-- Graph links ignore shared CDN/cloud infrastructure, which avoids false links but can miss operators who hide behind it.
-- Official domains and helpline numbers in `brands.yaml` must be verified against each brand's own website before production use.
-
----
-
-## 14. Pilot path with Abu Dhabi Police
+## 12. Pilot path with Abu Dhabi Police
 
 1. **On-premise deployment** (one server, Docker Compose) connected to the takedown team's workflow.
 2. **Weekly brand-list updates** with UAE banks and government entities, including official helpline numbers for the Maps check.
@@ -462,6 +439,6 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 
 ---
 
-## 15. Team
+## 13. Team
 
-_Names and roles._
+NoTime
