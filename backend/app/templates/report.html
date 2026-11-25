@@ -25,7 +25,12 @@
   .shots figure { margin: 0; width: 31%; }
   .shots img { width: 100%; border: 1px solid #E6E2D9; border-radius: 4px; }
   .shots figcaption { font-size: 9px; color: #8A8A85; }
-  .scan { page-break-inside: avoid; }
+  /* A scan block is taller than a page, so "avoid" only pushed it wholesale to page 2 and left
+     page 1 blank — it had to break anyway. Keep breaks out of the small units instead. */
+  .scan { page-break-inside: auto; }
+  .scan + .scan { page-break-before: always; }   /* in a case report each scan starts its own page */
+  h1, h2, h3 { page-break-after: avoid; }
+  tr, figure, .grid > div { page-break-inside: avoid; }
   footer { margin-top: 28px; font-size: 9px; color: #8A8A85; border-top: 1px solid #E6E2D9; padding-top: 6px; }
 </style>
 </head>
