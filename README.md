@@ -19,10 +19,9 @@ Built for the **Abu Dhabi Police × 42 Abu Dhabi** hackathon. ScamShield is an i
 9. [Getting started](#9-getting-started)
 10. [API overview](#10-api-overview)
 11. [Repository layout](#11-repository-layout)
-12. [Security and ethics](#12-security-and-ethics)
-13. [Roadmap](#13-roadmap)
-14. [Pilot path with Abu Dhabi Police](#14-pilot-path-with-abu-dhabi-police)
-15. [Team](#15-team)
+12. [Roadmap](#12-roadmap)
+13. [Pilot path with Abu Dhabi Police](#13-pilot-path-with-abu-dhabi-police)
+14. [Team](#14-team)
 
 ---
 
@@ -433,19 +432,7 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 
 ---
 
-## 12. Security and ethics
-
-- **Suspicious links are opened only in the sandbox container**: read-only filesystem, all Linux capabilities dropped, `no-new-privileges`, memory/CPU/PID limits, non-root user, fresh browser context per scan.
-- **No SSRF**: private and internal addresses (Docker service names, `10.x`, `127.x`…) are never opened or probed by the backend or the sandbox. The only exception is the local `.test` demo sites.
-- **Fake-victim agent** fills forms only with fixed canary values (card `4111 1111 1111 1111`, OTP `000000`…). It runs only when `AGENT_ENABLED=true` **and** the host matches `AGENT_ALLOWED_SUFFIXES` (default `.test`), so it never submits anything to live sites.
-- **Fictional demo brand**: "Saqr Bank" pages use no real brand names or logos, carry a visible "ScamShield TEST PAGE" footer and `noindex`, and are served only inside Docker.
-- **AI analyst and data**: only the scam page's own text and screenshots go to the analyst (no victim data is involved). For a pilot where nothing may leave the premises, `LLM_PROVIDER=ollama` keeps the model on a network with no internet access. Page content is marked as untrusted for the model, and the AI signal can only add risk, so a page that talks the model into "safe" cannot clear itself.
-- **Sandbox processes**: the sandbox runs with an init process so exited Chrome processes are reaped; without it they accumulated to the PID limit and stopped all scans.
-- **No real personal data** is collected or stored. The API is protected by an API key.
-
----
-
-## 13. Roadmap
+## 12. Roadmap
 
 - **Per-scan isolation**: one disposable container or microVM per scan, behind a UAE residential/mobile proxy so geo-blocking scam kits show their real content.
 - **Streaming Certificate Transparency** (certstream or a commercial feed) for minute-level early detection.
@@ -454,7 +441,7 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 - **Verified brand registry**: official domains and helpline numbers confirmed with each UAE bank and government entity.
 - **PostgreSQL and horizontal scaling** in place of SQLite.
 
-## 14. Pilot path with Abu Dhabi Police
+## 13. Pilot path with Abu Dhabi Police
 
 1. **On-premise deployment** (one server, Docker Compose) connected to the takedown team's workflow.
 2. **Weekly brand-list updates** with UAE banks and government entities, including official helpline numbers for the Maps check.
@@ -464,7 +451,7 @@ All routes are JSON under `/api` and need `X-API-Key` (or `?key=` for images and
 
 ---
 
-## 15. Team
+## 14. Team
 
 - **Haithem**
 - **Ahmed**
