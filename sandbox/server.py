@@ -39,6 +39,10 @@ FORM_JS = """
 """
 
 
+# At most 2 browsers at once: the container is capped at 1.5 CPUs / 2 GB, and overload breaks the Playwright driver.
+BROWSER_SLOTS = asyncio.Semaphore(int(os.getenv("SANDBOX_MAX_BROWSERS", "2")))
+
+
 class VisitReq(BaseModel):
     url: str
     agent: bool = False
@@ -147,7 +151,7 @@ async def health():
 @app.post("/pdf")
 async def pdf(req: PdfReq):
     """Render the backend's own report HTML to PDF (Chromium shapes Arabic correctly). No network access."""
-    async with async_playwright() as p:
+    async with BROWSER_SLOTS, async_playwright() as p:
         browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
         try:
             page = await browser.new_page()
@@ -162,6 +166,11 @@ async def pdf(req: PdfReq):
 @app.post("/visit")
 async def visit(req: VisitReq):
     assert_public(req.url)
+    async with BROWSER_SLOTS:
+        return await _visit(req)
+
+
+async def _visit(req: VisitReq):
     out = {"requested_url": req.url, "redirect_chain": [], "network": [], "steps": [], "error": None}
     bot_task = asyncio.create_task(bot_view(req.url))
     args = ["--no-sandbox", "--disable-dev-shm-usage"]
