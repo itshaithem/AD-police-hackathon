@@ -5,6 +5,7 @@ import re
 
 import httpx
 
+from .. import watchlist
 from ..pipeline.url_features import BRANDS, is_allowlisted, registered_domain
 
 DOMAIN_RE = re.compile(r"^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
@@ -27,7 +28,7 @@ async def _query(c, kw, sem):
 async def poll(hours=48):
     """New certificates for UAE brand keywords (global brands return too much to poll this way)."""
     cutoff = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(hours=hours)
-    jobs = [(b, kw) for b in BRANDS if b.get("region") != "global" and b["id"] != "saqrbank"
+    jobs = [(b, kw) for b in BRANDS if b.get("region") != "global" and b["id"] != "saqrbank" and watchlist.polls(b)
             for kw in b["keywords"] if len(kw.strip("-")) >= 4]
     last_stats.update(queries=0, failed=0)
     sem = asyncio.Semaphore(4)

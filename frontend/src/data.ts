@@ -26,6 +26,28 @@ const en = {
   discSub: 'New suspicious sites and Maps listings, found automatically.', foundToday: 'Found today', highRisk: 'High risk', brands: 'Brands targeted',
   all: 'All', websites: 'Websites', maps: 'Maps listings', colDomain: 'Domain or listing', colBrand: 'Impersonating', colSource: 'Source', colRisk: 'Risk', colTime: 'Detected',
   cert: 'Certificate log', search: 'Search', mapsSrc: 'Maps', website: 'Website', listing: 'Maps listing',
+  tabWeb: 'Website', tabMaps: 'Maps listing', mapsH1: 'Check a business on Google Maps',
+  mapsPlaceholder: 'e.g. ADCB customer service', mapsBtn: 'Check listings',
+  mapsChecking: 'Checking Google Maps…', mapsNone: 'No listings found for that search.',
+  mapsClean: 'No impersonating listings. Every result matches the official brand.',
+  mapsOfficial: 'Official', mapsBrand: 'Matched brand', mapsNoBrand: 'No known brand matched — listings shown without scoring',
+  mapsFlagSite: 'Website is not the official one', mapsFlagPhone: 'Phone is not an official number',
+  mapsFlagMobile: 'Mobile number for a bank helpline', mapsClaims: 'Uses the brand name',
+  mapsOpen: 'Open in Maps', mapsScanSite: 'Scan this website', mapsNoKeyLong: 'Google Maps checking needs a Places API key.',
+  mapsDemo: 'Fictional demo listings — not from Google Maps', mapsNoPhone: 'no phone listed', mapsNoSite: 'no website listed',
+  mapsBack: 'Back to listings', mapsChecked: 'Checked', mapsAddress: 'Address', mapsPhone: 'Listed phone',
+  mapsSite: 'Listed website', mapsOfficialPhone: 'Official phone', mapsOfficialSite: 'Official website',
+  mapsSweepPdf: 'Download search report', mapsListingPdf: 'Download listing report',
+  mapsClaimsYes: 'Yes — uses the brand name', mapsClaimsNo: 'No', mapsUsesBrand: 'Impersonates brand',
+  mapsNothingWrong: 'Nothing wrong with this listing. It matches the official brand.',
+  mapsChecking2: 'Checked listings', mapsImpersonating: 'Impersonating',
+  watchlist: 'Watchlist', wlSub: 'Keywords and official websites to hunt for. Saving starts a discovery pass.',
+  wlKeywords: 'Keywords', wlSites: 'Official websites', wlKwHint: 'One per line — brand names, services, Arabic terms',
+  wlSiteHint: 'One per line — the real sites, so look-alikes stand out', wlSave: 'Save and discover',
+  wlSaving: 'Saving…', wlSaved: 'Saved — discovery started', wlRunning: 'Saved — discovery already running',
+  wlEmpty: 'Nothing watched yet', wlTargets: 'targets', wlSkipped: 'Skipped', wlNoCt: 'No certificate monitoring (too short or non-Latin)',
+  wlMapsOk: 'Maps discovery active', wlMapsNoKey: 'Maps discovery off — no Places API key',
+  wlMapsBad: 'Maps discovery off — the Places key was rejected', wlMapsQuota: 'Maps discovery paused — Places quota reached',
   netSub: 'Scam domains linked by shared IP, phone number, registrar or page template. Select a cluster.', cluster: 'Cluster', linked: 'linked domains', shared: 'Shared indicators', domainsLabel: 'Domains', gen: 'Generate cluster report',
   legendLine: 'Lines: shared IP · phone · registrar · template', dragHint: 'Drag nodes · hover for domain · click to inspect',
   repSub: 'Investigation cases and their evidence, ready to export.', domainsN: 'domains', aiSummary: 'AI summary', evidence: 'Evidence', redirect: 'Redirect chain', ready: 'ready', opened: 'Opened', done: 'Done', newTag: 'New', justNow: 'just now', liveLabel: 'Live — new findings appear here automatically', demo: 'Demo', stopDemo: 'Stop demo', stop: 'Stop',
@@ -51,6 +73,28 @@ const ar: Strings = {
   discSub: 'مواقع وقوائم خرائط مشبوهة جديدة، تُرصد تلقائيًا.', foundToday: 'رُصد اليوم', highRisk: 'عالي الخطورة', brands: 'علامات مستهدفة',
   all: 'الكل', websites: 'المواقع', maps: 'قوائم الخرائط', colDomain: 'النطاق أو القائمة', colBrand: 'الجهة المنتحَلة', colSource: 'المصدر', colRisk: 'الخطورة', colTime: 'الرصد',
   cert: 'سجل الشهادات', search: 'البحث', mapsSrc: 'الخرائط', website: 'موقع', listing: 'قائمة خرائط',
+  tabWeb: 'موقع إلكتروني', tabMaps: 'قائمة خرائط', mapsH1: 'تحقّق من نشاط تجاري على خرائط جوجل',
+  mapsPlaceholder: 'مثال: خدمة عملاء بنك أبوظبي التجاري', mapsBtn: 'افحص القوائم',
+  mapsChecking: 'جارٍ فحص خرائط جوجل…', mapsNone: 'لا توجد قوائم مطابقة لهذا البحث.',
+  mapsClean: 'لا توجد قوائم منتحِلة. جميع النتائج تطابق العلامة الرسمية.',
+  mapsOfficial: 'رسمي', mapsBrand: 'العلامة المطابقة', mapsNoBrand: 'لم تُطابق أي علامة معروفة — تُعرض القوائم بدون تقييم',
+  mapsFlagSite: 'الموقع ليس الموقع الرسمي', mapsFlagPhone: 'الرقم ليس رقمًا رسميًا',
+  mapsFlagMobile: 'رقم جوال لخط مساعدة مصرفي', mapsClaims: 'يستخدم اسم العلامة',
+  mapsOpen: 'افتح في الخرائط', mapsScanSite: 'افحص هذا الموقع', mapsNoKeyLong: 'فحص خرائط جوجل يتطلب مفتاح Places API.',
+  mapsDemo: 'قوائم تجريبية خيالية — ليست من خرائط جوجل', mapsNoPhone: 'لا يوجد رقم', mapsNoSite: 'لا يوجد موقع',
+  mapsBack: 'العودة إلى القوائم', mapsChecked: 'وقت الفحص', mapsAddress: 'العنوان', mapsPhone: 'الرقم المدرج',
+  mapsSite: 'الموقع المدرج', mapsOfficialPhone: 'الرقم الرسمي', mapsOfficialSite: 'الموقع الرسمي',
+  mapsSweepPdf: 'تنزيل تقرير البحث', mapsListingPdf: 'تنزيل تقرير القائمة',
+  mapsClaimsYes: 'نعم — يستخدم اسم العلامة', mapsClaimsNo: 'لا', mapsUsesBrand: 'ينتحل العلامة',
+  mapsNothingWrong: 'لا توجد مشكلة في هذه القائمة. تطابق العلامة الرسمية.',
+  mapsChecking2: 'القوائم المفحوصة', mapsImpersonating: 'قوائم منتحِلة',
+  watchlist: 'قائمة المراقبة', wlSub: 'كلمات مفتاحية ومواقع رسمية للبحث عن منتحليها. الحفظ يبدأ جولة رصد.',
+  wlKeywords: 'الكلمات المفتاحية', wlSites: 'المواقع الرسمية', wlKwHint: 'كلمة في كل سطر — أسماء علامات أو خدمات أو مصطلحات عربية',
+  wlSiteHint: 'موقع في كل سطر — المواقع الحقيقية، لتتضح النطاقات الشبيهة', wlSave: 'احفظ وابدأ الرصد',
+  wlSaving: 'جارٍ الحفظ…', wlSaved: 'تم الحفظ — بدأ الرصد', wlRunning: 'تم الحفظ — الرصد جارٍ بالفعل',
+  wlEmpty: 'لا توجد عناصر مراقبة بعد', wlTargets: 'عنصر مراقبة', wlSkipped: 'تم تجاهل', wlNoCt: 'بدون مراقبة شهادات (قصيرة جدًا أو غير لاتينية)',
+  wlMapsOk: 'رصد الخرائط يعمل', wlMapsNoKey: 'رصد الخرائط متوقف — لا يوجد مفتاح Places',
+  wlMapsBad: 'رصد الخرائط متوقف — تم رفض مفتاح Places', wlMapsQuota: 'رصد الخرائط متوقف مؤقتًا — تجاوز حصة Places',
   netSub: 'نطاقات احتيالية مترابطة عبر عنوان IP أو رقم هاتف أو جهة تسجيل أو قالب مشترك. اختر مجموعة.', cluster: 'مجموعة', linked: 'نطاقات مرتبطة', shared: 'مؤشرات مشتركة', domainsLabel: 'النطاقات', gen: 'إنشاء تقرير المجموعة',
   legendLine: 'الخطوط: IP · هاتف · جهة تسجيل · قالب مشترك', dragHint: 'اسحب العُقد · مرّر للاطلاع على النطاق · انقر للتفاصيل',
   repSub: 'قضايا التحقيق وأدلتها، جاهزة للتصدير.', domainsN: 'نطاقات', aiSummary: 'ملخص الذكاء الاصطناعي', evidence: 'الأدلة', redirect: 'سلسلة إعادة التوجيه', ready: 'جاهز', opened: 'فُتحت', done: 'تم', newTag: 'جديد', justNow: 'الآن', liveLabel: 'مباشر — تظهر النتائج الجديدة هنا تلقائيًا', demo: 'عرض توضيحي', stopDemo: 'إيقاف العرض', stop: 'إيقاف',
@@ -246,7 +290,9 @@ export const SAMPLE_DOMAINS = ['adcb-secure-login.com', 'tamm-fines-pay.net', 'u
 // ---- Risk levels ----
 export type Level = 'scam' | 'sus' | 'safe';
 export const LEVEL_COLOR: Record<Level, string> = { scam: '#C8442F', sus: '#C99A2E', safe: '#6B8E5A' };
-export const HIGH_RISK_THRESHOLD = 75;
+// Matches the backend's SCAM_AT (pipeline/scoring.py): "high risk" and the "scam" verdict
+// must mean the same thing, or a row reads 'scam' while the UI paints it amber.
+export const HIGH_RISK_THRESHOLD = 70;
 export const levelOf = (score: number, threshold = HIGH_RISK_THRESHOLD): Level =>
   score >= threshold ? 'scam' : score >= 40 ? 'sus' : 'safe';
 export const colorOf = (score: number, threshold = HIGH_RISK_THRESHOLD) => LEVEL_COLOR[levelOf(score, threshold)];

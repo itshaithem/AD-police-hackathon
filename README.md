@@ -149,7 +149,7 @@ flowchart TD
 
 ### 3.3 The discovery loop
 
-Runs every `DISCOVERY_INTERVAL_MIN` minutes (and on demand via `POST /api/discovery/run`). New items are de-duplicated by `(source, item)` and auto-scanned with bounded concurrency.
+Starts a cycle every `DISCOVERY_INTERVAL_MIN` minutes (and on demand via `POST /api/discovery/run`). New items are de-duplicated by `(source, item)`. Each cycle auto-scans newest-first within `SCAN_BUDGET_SEC`; whatever is left waits in the backlog and later cycles drain it, so one large look-alike sweep cannot hold a cycle open. Pollers are capped at `POLL_BUDGET_SEC` and the dnstwist sweep (~23s and ~4k permutations per official domain) rotates `DNSTWIST_PER_CYCLE` domains per cycle, so a cycle always fits inside the interval.
 
 ```mermaid
 flowchart LR
@@ -378,7 +378,10 @@ Input needs a `url` column. Output: `url, verdict, score, is_scam, top_reasons`.
 | `OLLAMA_MODEL` | `qwen3:4b` | Local analyst |
 | `VISUAL_ENABLED` | `true` | CLIP visual similarity |
 | `AGENT_ENABLED` / `AGENT_ALLOWED_SUFFIXES` | `false` / `.test` | Fake-victim agent, only on allowed hosts |
-| `DISCOVERY_ENABLED` / `DISCOVERY_INTERVAL_MIN` | `true` / `20` | Background discovery loop |
+| `DISCOVERY_ENABLED` / `DISCOVERY_INTERVAL_MIN` | `true` / `5` | Background discovery loop |
+| `SCAN_BUDGET_SEC` | `120` | Auto-scan time per cycle; the rest waits in the backlog |
+| `POLL_BUDGET_SEC` | `120` | Poller time per cycle; stragglers are dropped and retried next cycle |
+| `DNSTWIST_PER_CYCLE` | `3` | Official domains dnstwist sweeps per cycle, rotating |
 | `SERPAPI_KEY` / `GOOGLE_PLACES_KEY` | empty | Enable search-ad and Maps discovery |
 | `SCAN_CONCURRENCY` | `3` | Parallel scans in batch and discovery |
 | `DEMO_MODE` | `false` | Serve the latest saved result for a domain instantly |

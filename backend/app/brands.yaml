@@ -45,7 +45,7 @@ brands:
     phones: []
   - id: mashreq
     name: {en: "Mashreq", ar: "المشرق"}
-    official_domains: [mashreq.com]
+    official_domains: [mashreq.com, mashreqbank.com]
     keywords: [mashreq]
     text_keywords: ["Mashreq"]
     phones: []
@@ -63,7 +63,7 @@ brands:
     phones: []
   - id: etisalat
     name: {en: "e& (Etisalat)", ar: "اتصالات"}
-    official_domains: [etisalat.ae, eand.com]
+    official_domains: [etisalat.ae, eand.com, eand.ae]
     keywords: [etisalat]
     text_keywords: ["Etisalat", "اتصالات"]
     phones: []
@@ -147,7 +147,7 @@ brands:
     phones: []
   - id: adnoc
     name: {en: "ADNOC", ar: "أدنوك"}
-    official_domains: [adnoc.ae]
+    official_domains: [adnoc.ae, adnocdistribution.ae]   # the retail/fuel arm, used by every station listing
     keywords: [adnoc]
     text_keywords: ["ADNOC", "أدنوك"]
     phones: []

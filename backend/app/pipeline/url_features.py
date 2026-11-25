@@ -36,6 +36,12 @@ def official_brand(domain: str):
     return None
 
 
+def brand_label(brand_id: str | None) -> str:
+    """Display name for a reason line. Watchlist brands show the user's own wording, not their wl_ id."""
+    b = BRAND_BY_ID.get(brand_id or "")
+    return b["name"]["en"] if b and b.get("wl") else (brand_id or "").upper()
+
+
 def brand_by_name(name: str | None) -> str | None:
     """Map a brand name (e.g. from the AI analyst, English or Arabic) to a registry id."""
     if not name:

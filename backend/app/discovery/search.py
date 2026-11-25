@@ -1,8 +1,9 @@
 """Search results and ads (SerpAPI), Arabic + English UAE queries."""
 import httpx
 
+from .. import watchlist
 from ..config import SERPAPI_KEY
-from ..pipeline.url_features import extract
+from ..pipeline.url_features import BRANDS, extract
 
 QUERIES = ["ADCB login", "TAMM traffic fine payment", "UAE PASS login", "Abu Dhabi Police fines pay",
            "Salik recharge", "Emirates Post parcel delivery fee", "دفع مخالفات شرطة أبوظبي", "تسجيل دخول بنك أبوظبي التجاري"]
@@ -12,8 +13,11 @@ async def poll():
     if not SERPAPI_KEY:
         return []
     out = []
+    # Watchlist keywords are free text ("salik recharge", Arabic phrases) — useless as domain labels,
+    # but exactly what a search query wants. Only this cycle's slice, same budget as the other pollers.
+    queries = QUERIES + [b["text_keywords"][0] for b in BRANDS if b.get("wl") and watchlist.polls(b)]
     async with httpx.AsyncClient(timeout=20) as c:
-        for q in QUERIES:
+        for q in queries:
             try:
                 j = (await c.get("https://serpapi.com/search.json",
                                  params={"q": q, "gl": "ae", "hl": "en", "api_key": SERPAPI_KEY})).json()

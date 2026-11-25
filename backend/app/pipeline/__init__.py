@@ -35,7 +35,8 @@ def _brand(brand_id):
     b = url_features.BRAND_BY_ID.get(brand_id) if brand_id else None
     if not b:
         return {"id": brand_id} if brand_id else None
-    return {"id": brand_id, "name": b["name"], "official_domain": b["official_domains"][0]}
+    # Watchlist brands may be keyword-only, with no official domain to compare against.
+    return {"id": brand_id, "name": b["name"], "official_domain": (b["official_domains"] or [None])[0]}
 
 
 def site_status(f: dict, intel: dict, sb: dict, fast: bool) -> str:
