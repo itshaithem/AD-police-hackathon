@@ -5,7 +5,7 @@ import dns.asyncresolver
 import dnstwist
 
 from .. import db, watchlist
-from ..config import DNSTWIST_PER_CYCLE
+from ..config import DNSTWIST_PER_CYCLE, UAE_PER_CYCLE
 from ..pipeline.url_features import BRANDS
 
 UAE_PATTERNS = ["{kw}-uae", "{kw}-pay", "{kw}-secure", "{kw}-fines", "{kw}ae", "my{kw}", "{kw}-ae", "{kw}-online",
@@ -28,14 +28,14 @@ async def _resolves(name, resolver):
 async def uae_variants():
     r = dns.asyncresolver.Resolver()
     r.lifetime = 3
+    # Every keyword expands to 77 candidates, and the same ones get re-probed each cycle for
+    # almost no new hits. Rotate the keywords so one cycle stays cheap and a lap still covers all.
+    pairs = [(b["id"], kw) for b in BRANDS if b["id"] != "saqrbank" and watchlist.polls(b) for kw in b["keywords"]]
     cands = {}
-    for b in BRANDS:
-        if b["id"] == "saqrbank" or not watchlist.polls(b):
-            continue
-        for kw in b["keywords"]:
-            for p in UAE_PATTERNS:
-                for tld in UAE_TLDS:
-                    cands[f"{p.format(kw=kw)}.{tld}"] = b["id"]
+    for bid, kw in db.slice_by_cursor(pairs, "uae_cursor", UAE_PER_CYCLE):
+        for p in UAE_PATTERNS:
+            for tld in UAE_TLDS:
+                cands[f"{p.format(kw=kw)}.{tld}"] = bid
     names = list(cands)
     sem = asyncio.Semaphore(50)
 
@@ -48,22 +48,13 @@ async def uae_variants():
             for n in hits]
 
 
-def twist_slice(pairs: list, cursor: int, n: int) -> list:
-    """A few official domains per cycle, wrapping — a full sweep is ~23s per domain."""
-    if not pairs or n <= 0:
-        return []
-    cur = cursor % len(pairs)
-    return (pairs + pairs)[cur:cur + min(n, len(pairs))]
-
-
 async def poll(include_dnstwist=True):
     out = await uae_variants()
     if not include_dnstwist:
         return out
+    # A full sweep is ~23s per domain, so take a few per cycle and come back for the rest.
     pairs = [(b, od) for b in BRANDS for od in b["official_domains"] if not od.endswith(".test")]
-    cur = db.kv_get("twist_cursor", 0)
-    todo = twist_slice(pairs, cur, DNSTWIST_PER_CYCLE)
-    db.kv_set("twist_cursor", (cur + DNSTWIST_PER_CYCLE) % max(1, len(pairs)))
+    todo = db.slice_by_cursor(pairs, "twist_cursor", DNSTWIST_PER_CYCLE)
     results = await asyncio.gather(*(asyncio.to_thread(_run, od) for _, od in todo), return_exceptions=True)
     for (b, od), rows in zip(todo, results):
         if isinstance(rows, Exception):
@@ -76,19 +67,22 @@ async def poll(include_dnstwist=True):
 
 
 def demo():
-    """Self-check: python -m app.discovery.lookalikes"""
-    pairs = [("b%d" % i, "d%d.com" % i) for i in range(5)]
-    assert twist_slice(pairs, 0, 3) == pairs[:3]
-    assert twist_slice(pairs, 3, 3) == pairs[3:] + pairs[:1]      # wraps
-    assert twist_slice(pairs, 0, 9) == pairs                      # never repeats within one slice
-    assert twist_slice([], 0, 3) == [] and twist_slice(pairs, 0, 0) == []
+    """Self-check for the shared rotation: python -m app.discovery.lookalikes"""
+    from .. import db
+    items = ["a", "b", "c", "d", "e"]
+    db.kv_set("t_demo", 0)
+    assert db.slice_by_cursor(items, "t_demo", 3) == ["a", "b", "c"]
+    assert db.slice_by_cursor(items, "t_demo", 3) == ["d", "e", "a"]      # wraps
+    db.kv_set("t_demo", 0)
+    assert db.slice_by_cursor(items, "t_demo", 9) == items                # never repeats in one slice
+    assert db.slice_by_cursor([], "t_demo", 3) == []
+    assert db.slice_by_cursor(items, "t_demo", 0) == []
+    db.kv_set("t_demo", 0)
     seen = set()
-    cur = 0
-    for _ in range(2):                                            # two laps cover everything
-        for p in twist_slice(pairs, cur, 3):
-            seen.add(p)
-        cur += 3
-    assert seen == set(pairs), seen
+    for _ in range(2):                                                    # two laps cover everything
+        seen |= set(db.slice_by_cursor(items, "t_demo", 3))
+    assert seen == set(items), seen
+    db._exec("DELETE FROM kv WHERE k=?", ("t_demo",))
     print("lookalikes ok")
 
 

@@ -52,7 +52,7 @@ flowchart LR
 
 | Step | What it does |
 |---|---|
-| **Discover** | Watches Certificate Transparency logs, generates and DNS-checks look-alike domains of UAE brands, monitors search results/ads and Google Maps listings. Every new find is scanned automatically. |
+| **Discover** | Watches Certificate Transparency logs (crt.sh, queried one keyword at a time on a slow rotation — it rate-limits), generates and DNS-checks look-alike domains of UAE brands, monitors search results/ads and Google Maps listings. Every new find is scanned automatically. |
 | **Detect** | Opens each link in a sandboxed mobile browser, never on the investigator's machine, and scores it from URL, registration, hosting, TLS, redirects, page content, visual similarity, a URL model and a local AI analyst. |
 | **Connect** | Builds a fraud network graph: domains linked by a shared IP, phone number, form template, page appearance, TLS certificate or name server. |
 | **Explain** | Every score comes with plain-language reasons in both languages. Addresses that don't exist get no score; internal addresses are never opened. |
@@ -381,6 +381,8 @@ Input needs a `url` column. Output: `url, verdict, score, is_scam, top_reasons`.
 | `DISCOVERY_ENABLED` / `DISCOVERY_INTERVAL_MIN` | `true` / `5` | Background discovery loop |
 | `SCAN_BUDGET_SEC` | `120` | Auto-scan time per cycle; the rest waits in the backlog |
 | `POLL_BUDGET_SEC` | `120` | Poller time per cycle; stragglers are dropped and retried next cycle |
+| `UAE_PER_CYCLE` | `20` | Keywords expanded into UAE look-alike patterns per cycle, rotating |
+| `CT_PER_CYCLE` / `CT_EVERY_N_CYCLES` | `3` / `6` | crt.sh rate-limits, so certificate monitoring runs a few keywords on a slower beat |
 | `DNSTWIST_PER_CYCLE` | `3` | Official domains dnstwist sweeps per cycle, rotating |
 | `SERPAPI_KEY` / `GOOGLE_PLACES_KEY` | empty | Enable search-ad and Maps discovery |
 | `SCAN_CONCURRENCY` | `3` | Parallel scans in batch and discovery |

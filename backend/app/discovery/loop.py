@@ -10,7 +10,8 @@ import logging
 import time
 
 from .. import db, watchlist
-from ..config import DISCOVERY_INTERVAL_MIN, POLL_BUDGET_SEC, SCAN_BUDGET_SEC, SCAN_CONCURRENCY
+from ..config import (CT_EVERY_N_CYCLES, DISCOVERY_INTERVAL_MIN, POLL_BUDGET_SEC, SCAN_BUDGET_SEC,
+                      SCAN_CONCURRENCY)
 from ..pipeline import run_scan
 from . import ct_monitor, lookalikes, maps, search
 
@@ -40,16 +41,17 @@ async def _scan_item(did: str, d: dict, deadline: float):
             log.warning("auto-scan failed for %s: %s", target, e)
 
 
-async def run_once(include_dnstwist=False) -> dict:
-    """Run every poller once. Returns counts of new items per source."""
+async def run_once(include_dnstwist=False, include_ct=True) -> dict:
+    """Run the pollers once. Returns counts of new items per source."""
     if _running.locked():
         return {"status": "already running"}
     async with _running:
         wl_active = watchlist.rotate()  # this cycle's slice of the watchlist; built-in brands always run
         # crt.sh in particular can hang for minutes. Take whatever finished inside the budget and
         # drop the stragglers; the next cycle asks again.
-        jobs = {"ct": ct_monitor.poll(), "lookalike": lookalikes.poll(include_dnstwist),
-                "search": search.poll(), "maps": maps.poll()}
+        jobs = {"lookalike": lookalikes.poll(include_dnstwist), "search": search.poll(), "maps": maps.poll()}
+        if include_ct:
+            jobs["ct"] = ct_monitor.poll()  # crt.sh rate-limits, so it runs on a slower beat
         tasks = {asyncio.create_task(c): name for name, c in jobs.items()}
         done, pending = await asyncio.wait(tasks, timeout=POLL_BUDGET_SEC)
         for t in pending:
@@ -77,9 +79,11 @@ async def run_once(include_dnstwist=False) -> dict:
         deadline = time.monotonic() + SCAN_BUDGET_SEC
         await asyncio.gather(*(_scan_item(did, d, deadline) for did, d in queue))
         pending = db.C.execute("SELECT COUNT(*) FROM discoveries WHERE scan_id IS NULL").fetchone()[0]
+        ct_note = f"{ct_monitor.last_stats['failed']}/{ct_monitor.last_stats['queries']}"
+        if ct_monitor.last_stats.get("rate_limited"):
+            ct_note += " (rate-limited)"
         last_run.update(at=db.now(), counts=counts, watchlist_active=len(wl_active), places=maps.last_status["state"],
-                        unscanned_backlog=pending,
-                        ct_queries_failed=f"{ct_monitor.last_stats['failed']}/{ct_monitor.last_stats['queries']}")
+                        unscanned_backlog=pending, ct_queries_failed=ct_note if include_ct else "skipped")
     return counts
 
 
@@ -91,14 +95,16 @@ async def forever():
     if a cycle ever overruns the interval the next starts immediately.
     """
     period = DISCOVERY_INTERVAL_MIN * 60
+    cycle = 0
     while True:
         started = time.monotonic()
         try:
-            # dnstwist runs every cycle now, but only over a rotating handful of official domains
-            # (see lookalikes.twist_slice) so it fits inside the poll budget.
-            await run_once(include_dnstwist=True)
+            # dnstwist runs every cycle but only over a rotating handful of official domains, so it
+            # fits the poll budget. crt.sh rate-limits, so certificate monitoring gets a slower beat.
+            await run_once(include_dnstwist=True, include_ct=cycle % max(1, CT_EVERY_N_CYCLES) == 0)
         except Exception as e:
             log.warning("discovery run failed: %s", e)
+        cycle += 1
         await asyncio.sleep(max(0, period - (time.monotonic() - started)))
 
 

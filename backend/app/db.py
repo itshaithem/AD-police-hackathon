@@ -49,6 +49,18 @@ def kv_set(k, v):
     _exec("INSERT OR REPLACE INTO kv VALUES(?,?)", (k, json.dumps(v, ensure_ascii=False)))
 
 
+def slice_by_cursor(items: list, key: str, n: int) -> list:
+    """Take n items per call, remembering the position so repeated calls cover everything in turn.
+
+    Used wherever a poller is too expensive to run over its whole input every cycle.
+    """
+    if not items or n <= 0:
+        return []
+    cur = kv_get(key, 0) % len(items)
+    kv_set(key, (cur + n) % len(items))
+    return (items + items)[cur:cur + min(n, len(items))]
+
+
 # ---------- scans ----------
 def save_scan(r: dict):
     _exec("INSERT OR REPLACE INTO scans VALUES(?,?,?,?,?,?,?,?,?,?)",
