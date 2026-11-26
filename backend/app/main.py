@@ -16,7 +16,7 @@ from .config import API_KEY, CORS_ORIGINS, DATA_DIR, DISCOVERY_ENABLED, EVIDENCE
 from .discovery import loop as discovery, maps
 from .pipeline import llm, run_scan, sandbox_client, scoring, visual
 from .pipeline.url_features import BRAND_BY_ID, BRANDS, brand_by_name
-from .schemas import CaseCreate, CasePatch, PlacesScanRequest, ScanRequest, WatchlistSave
+from .schemas import CaseCreate, CasePatch, DiscoveryToggle, PlacesScanRequest, ScanRequest, WatchlistSave
 
 logging.basicConfig(level=logging.INFO)
 
@@ -72,7 +72,8 @@ async def health():
     sb, lm = await asyncio.gather(sandbox_client.healthy(), llm.healthy())
     return {"backend": "ok", "db": "ok", "sandbox": "ok" if sb else "down", "llm": "ok" if lm else "down", "llm_provider": LLM_PROVIDER if lm else None,
             "visual": "ok" if visual._model is not None else ("down" if visual._failed or not visual.VISUAL_ENABLED else "idle"),
-            "discovery": "ok" if DISCOVERY_ENABLED else "down", "places": maps.last_status["state"],
+            "discovery": ("ok" if discovery.is_enabled() else "paused") if DISCOVERY_ENABLED else "down",
+            "places": maps.last_status["state"],
             "last_discovery": discovery.last_run or None}
 
 
@@ -269,6 +270,19 @@ async def discovery_run(bg: BackgroundTasks, dnstwist: bool = False):
         return {"status": "already running"}
     bg.add_task(discovery.run_once, dnstwist)
     return {"status": "started"}
+
+
+@app.get("/api/discovery/enabled", dependencies=[Depends(auth)])
+def discovery_enabled():
+    return {"enabled": discovery.is_enabled() if DISCOVERY_ENABLED else False, "configurable": DISCOVERY_ENABLED}
+
+
+@app.post("/api/discovery/enabled", dependencies=[Depends(auth)])
+def discovery_set_enabled(body: DiscoveryToggle):
+    if not DISCOVERY_ENABLED:
+        raise HTTPException(409, "discovery is disabled at the deployment level (DISCOVERY_ENABLED=false)")
+    discovery.set_enabled(body.enabled)
+    return {"enabled": discovery.is_enabled()}
 
 
 # ---------------- watchlist ----------------

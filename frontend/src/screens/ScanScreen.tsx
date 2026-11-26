@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { L, LEVEL_COLOR, SAMPLE_DOMAINS, SCAN_STEPS, T, colorOf, levelOf, type Strings } from '../data';
+import { L, LEVEL_COLOR, SAMPLE_DOMAINS, SCAN_STEPS, T, colorOf, levelOf, placesStatusText, type Strings } from '../data';
 import type { Dashboard } from '../useDashboard';
 import type { ScanView, Shot } from '../views';
 
@@ -118,7 +118,7 @@ function PlacesPanel({ dash }: { dash: Dashboard }) {
           <div className="places-head">
             <span className="label">
               {r.demo ? `${t.mapsDemo} · ` : ''}
-              {r.status !== 'ok' ? t.mapsNoKeyLong
+              {r.status !== 'ok' ? placesStatusText(r.status, t)
                 : r.brand_name ? `${t.mapsBrand}: ${r.brand_name}`
                 : t.mapsNoBrand}
             </span>

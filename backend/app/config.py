@@ -58,6 +58,10 @@ CT_MAX_PER_KEYWORD = int(env("CT_MAX_PER_KEYWORD", "20"))
 # crt.sh alternates between 502 in under a second and 200 in ~11s. Retrying the cheap failures
 # turns most of them into results; a timeout has already spent the budget, so that one is final.
 CT_RETRIES = int(env("CT_RETRIES", "3"))
+# Places Text Search is a billed API with no free tier (~$0.017-0.032 per request). The Maps
+# poller had no cap at all — every built-in brand, every 5-minute cycle, forever — which measured
+# at ~36k requests/day against the live key. Rotate a slice like every other poller.
+MAPS_PER_CYCLE = int(env("MAPS_PER_CYCLE", "6"))
 # uae_variants re-probed the same ~7.9k candidates every cycle and found almost nothing new after
 # the first pass. Rotate the keywords instead: ~20 per cycle is a full lap every ~25 minutes.
 UAE_PER_CYCLE = int(env("UAE_PER_CYCLE", "20"))

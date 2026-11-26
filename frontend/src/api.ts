@@ -52,7 +52,7 @@ export interface ApiPlacesScan {
   brand?: string | null; brand_name?: string | null; official_domains?: string[];
   official_phones?: string; places: ApiPlace[];
 }
-export interface ApiPlaces { state: 'no_key' | 'idle' | 'ok' | 'invalid_key' | 'disabled' | 'quota' | 'error'; detail: string | null; at: string | null }
+export interface ApiPlaces { state: 'no_key' | 'idle' | 'ok' | 'invalid_key' | 'disabled' | 'quota' | 'rate_limited' | 'error'; detail: string | null; at: string | null }
 export interface ApiWatchlist {
   keywords: string[]; sites: string[]; saved_at: string | null;
   brands: number; pairs: Record<string, string[]>; no_ct: string[];
@@ -107,6 +107,9 @@ export const api = {
   discovery: (q = '') => req<ApiDiscovery[]>(`/api/discovery${q}`),
   runDiscovery: () => req<{ status: string }>('/api/discovery/run', { method: 'POST' }),
   stats: () => req<ApiStats>('/api/stats'),
+  discoveryEnabled: () => req<{ enabled: boolean; configurable: boolean }>('/api/discovery/enabled'),
+  setDiscoveryEnabled: (enabled: boolean) =>
+    req<{ enabled: boolean }>('/api/discovery/enabled', { method: 'POST', body: JSON.stringify({ enabled }) }),
   watchlist: () => req<ApiWatchlist>('/api/watchlist'),
   saveWatchlist: (body: { keywords: string; sites: string }) =>
     req<ApiWatchlist>('/api/watchlist', { method: 'POST', body: JSON.stringify(body) }),

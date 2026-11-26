@@ -66,6 +66,9 @@ export interface DashState {
   /** Scan id once the open listing has been persisted, so its PDF/case routes apply. */
   placeScanId: string | null;
   placeCase: string | null;
+  // Continuous discovery on/off (Discovery screen)
+  discoveryEnabled: boolean | null;
+  discoveryBusy: boolean;
 }
 
 const NARROW_BELOW = 760;
@@ -90,6 +93,7 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     wl: null, wlKeywords: '', wlSites: '', wlOpen: false, wlSaving: false, wlError: null,
     scanMode: 'web', placesQuery: 'ADCB customer service', places: null, placesBusy: false, placesError: null,
     placeDetail: null, placeBusy: false, placeScanId: null, placeCase: null,
+    discoveryEnabled: null, discoveryBusy: false,
   }));
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -299,6 +303,7 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
           now: Date.now(),
         }))
         .catch(() => undefined);
+      api.discoveryEnabled().then((d) => guard({ discoveryEnabled: d.enabled })).catch(() => undefined);
       api.watchlist()
         .then((w) => {
           if (!alive) return;
@@ -392,6 +397,19 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     }
   }, [set, ensurePlaceSaved]);
 
+  const toggleDiscovery = useCallback(async () => {
+    const want = !stateRef.current.discoveryEnabled;
+    set({ discoveryBusy: true });
+    try {
+      const r = await api.setDiscoveryEnabled(want);
+      set({ discoveryEnabled: r.enabled });
+    } catch (e) {
+      set({ wlError: (e as Error).message.slice(0, 160) });
+    } finally {
+      set({ discoveryBusy: false });
+    }
+  }, [set]);
+
   const saveWatchlist = useCallback(async () => {
     const { wlKeywords, wlSites } = stateRef.current;
     set({ wlSaving: true, wlError: null });
@@ -415,7 +433,7 @@ export function useDashboard(initial?: { screen?: Screen; lang?: Lang }) {
     : (MOCK_CASES.find((c) => c.id === s.caseId) ?? null);
 
   return {
-    state, set, runScan, openScan, toggleDemo, download, addToCase, uploadCsv, generateReport, exportCase, saveWatchlist, scanPlaces, openPlace, downloadPlace, addPlaceToCase,
+    state, set, runScan, openScan, toggleDemo, download, addToCase, uploadCsv, generateReport, exportCase, saveWatchlist, scanPlaces, openPlace, downloadPlace, addPlaceToCase, toggleDiscovery,
     findings, clusters, caseList, caseDetail,
   };
 }
