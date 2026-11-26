@@ -3,12 +3,15 @@ import asyncio
 import base64
 import hashlib
 import json
+import re
 from urllib.parse import urlsplit
 
 from .. import db
 from ..config import DEMO_MODE, EVIDENCE_DIR
 from . import content as content_mod
 from . import llm, ml_model, network_intel, sandbox_client, scoring, url_features, visual
+
+EMAIL_URL_RE = re.compile(r"https?://[^\s<>\"')]+")
 
 
 def _write_evidence(sid: str, steps: list, sb: dict, intel: dict):
@@ -131,3 +134,34 @@ async def run_scan(url: str, source="manual", agent=False, fast=False) -> dict:
     (ev / "result.json").write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
     db.save_scan(result)
     return result
+
+
+async def run_email_scan(subject: str, sender: str, body: str) -> dict:
+    """Content-only scan for pasted/extracted email text: no sandbox, no screenshots, not persisted.
+
+    Reuses the same content heuristics + LLM analyst + scorer as a normal page scan, so email
+    phishing text (urgency language, brand impersonation, requests for sensitive data) is judged
+    by the same signals a scammy webpage would be. The first link in the body (if any) is checked
+    for domain-level risk (new domain, typosquat, etc.) the same way a link scan would.
+    """
+    urls = EMAIL_URL_RE.findall(body)
+    f = url_features.extract(urls[0]) if urls else {
+        "allowlisted": False, "official_brand": None, "brand_imitation": None, "punycode": False,
+        "is_ip": False, "suspicious_tld": False, "free_host": False, "shortener": False,
+    }
+    intel = await network_intel.gather(f["host"], f["domain"]) if urls and not f["allowlisted"] else {}
+    c = content_mod.analyze([{"text": body, "title": subject, "forms": []}], bool(f.get("official_brand")))
+    # The extension now calls this on every page it loads, so most calls are ordinary, harmless
+    # pages. Skip the LLM (slow, paid) when the cheap heuristics found nothing at all — a page
+    # with no urgency language, no brand mention, no form asks, and no risky link scores 0 either
+    # way, so there's no signal for the LLM to weigh in on.
+    has_signal = bool(c["urgency"] or c["asks_for"] or c["brands_mentioned"]
+                      or f.get("brand_imitation") or f.get("punycode") or f.get("is_ip"))
+    lm = await llm.analyze(urls[0] if urls else "(page, no link)", bool(f.get("official_brand")), c, []) if has_signal else None
+    mp = ml_model.predict(f) if urls else None
+    sc, verdict, reasons = scoring.score(f, intel, {}, c, None, lm, mp)
+    return {
+        "subject": subject, "sender": sender, "links_found": urls[:10],
+        "score": sc, "verdict": verdict, "reasons": reasons,
+        "content": {k: x for k, x in c.items() if k != "text_excerpt"}, "llm": lm,
+    }

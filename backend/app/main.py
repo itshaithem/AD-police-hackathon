@@ -14,9 +14,10 @@ from . import db, evidence, graph, watchlist
 from .cli import read_urls, score_urls
 from .config import API_KEY, CORS_ORIGINS, DATA_DIR, DISCOVERY_ENABLED, EVIDENCE_DIR, LLM_PROVIDER, WATCHLIST_SLICE
 from .discovery import loop as discovery, maps
-from .pipeline import llm, run_scan, sandbox_client, scoring, visual
+from .pipeline import llm, run_email_scan, run_scan, sandbox_client, scoring, visual
 from .pipeline.url_features import BRAND_BY_ID, BRANDS, brand_by_name
-from .schemas import CaseCreate, CasePatch, DiscoveryToggle, PlacesScanRequest, ScanRequest, WatchlistSave
+from .schemas import (CaseCreate, CasePatch, DiscoveryToggle, EmailScanRequest, PlacesScanRequest, ScanRequest,
+                      WatchlistSave)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -81,6 +82,12 @@ async def health():
 @app.post("/api/scan", dependencies=[Depends(auth)])
 async def scan(req: ScanRequest):
     return await run_scan(req.url, agent=req.agent, fast=req.fast)
+
+
+@app.post("/api/scan/email", dependencies=[Depends(auth)])
+async def scan_email(req: EmailScanRequest):
+    """Content-only scan for email text (pasted, or extracted from an open webmail message)."""
+    return await run_email_scan(req.subject, req.sender, req.body)
 
 
 @app.post("/api/scan/places", dependencies=[Depends(auth)])

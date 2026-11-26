@@ -9,10 +9,106 @@ function extensionAlive() {
   return !!(chrome.runtime && chrome.runtime.id);
 }
 
+// Bare "http(s)://..." URLs written as plain text (not inside an <a>) are invisible to the
+// a[href] scan below. Wrap them in real <a> tags so the rest of the pipeline treats them
+// identically to a normal link. Self-terminating: once wrapped, no bare URL text remains for
+// the next mutation-triggered pass to find.
+const URL_RE = /\bhttps?:\/\/[^\s<>"')\]]+/g;
+const SKIP_TAGS = new Set(['A', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA']);
+
+function linkifyTextNodes() {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const p = node.parentElement;
+      if (!p || SKIP_TAGS.has(p.tagName) || p.isContentEditable) return NodeFilter.FILTER_REJECT;
+      URL_RE.lastIndex = 0;
+      return URL_RE.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+
+  for (const node of nodes) {
+    const text = node.nodeValue;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    let changed = false;
+    URL_RE.lastIndex = 0;
+    let m;
+    while ((m = URL_RE.exec(text))) {
+      const url = m[0].replace(/[.,;:!?]+$/, '');
+      if (!url) continue;
+      changed = true;
+      frag.append(text.slice(last, m.index));
+      const a = document.createElement('a');
+      a.href = url;
+      a.textContent = url;
+      a.dataset.scamshieldAutolink = '1';
+      a.style.cssText = 'color:inherit;text-decoration:underline dotted;';
+      frag.append(a);
+      last = m.index + url.length;
+    }
+    if (!changed) continue;
+    frag.append(text.slice(last));
+    node.replaceWith(frag);
+  }
+}
+
+// Scans the page's own visible text once per page load (not just its links) for scam content —
+// urgency language, brand impersonation, requests for sensitive info — via the same backend
+// pipeline a link scan uses. See backend/app/pipeline/__init__.py:run_email_scan. Runs on every
+// page (not just webmail); the backend skips its own expensive LLM step when the cheap heuristics
+// find nothing, so an ordinary page costs little beyond the one heuristic pass.
+let pageContentScanId = null; // set once per page load; guards against re-sending on every mutation
+
+function scanPageContent() {
+  if (pageContentScanId) return;
+  const text = document.body?.innerText?.trim();
+  if (!text || text.length < 40) return;
+  pageContentScanId = `p${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  // Gmail-specific extras (subject/sender) when present; harmless no-ops on any other site.
+  const subject = document.querySelector('h2.hP')?.textContent?.trim() || document.title || '';
+  const sender = document.querySelector('span.gD[email]')?.getAttribute('email') || '';
+  try {
+    chrome.runtime.sendMessage({ type: 'SCAN_EMAIL', id: pageContentScanId, subject, sender, body: text.slice(0, 20000) });
+  } catch {
+    pageContentScanId = null; // stale content script; dies until the tab reloads
+  }
+}
+
+function showPageContentBanner(result) {
+  if (document.getElementById('scamshield-page-banner')) return;
+  const lv = levelOf(result.score);
+  const box = document.createElement('div');
+  box.id = 'scamshield-page-banner';
+  box.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:10px 16px;
+    background:#1a1f2e;color:#f2e9da;border-bottom:3px solid ${LEVEL_COLOR[lv]};
+    font:14px/1.4 system-ui,sans-serif;display:flex;align-items:center;justify-content:space-between;
+    gap:12px;box-shadow:0 4px 12px rgba(0,0,0,.3);`;
+  const label = lv === 'scam' ? 'a likely scam' : 'suspicious';
+  const text = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.style.color = LEVEL_COLOR[lv];
+  strong.textContent = '⚠ ScamShield: ';
+  text.append(strong, document.createTextNode(
+    `This page's content looks like ${label} (${result.score}/100) — ${result.llm?.summary_en || result.reasons?.[0]?.reason_en || 'review it carefully.'}`));
+  const close = document.createElement('button');
+  close.textContent = '✕';
+  close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;font-size:16px;flex:none;';
+  close.onclick = () => box.remove();
+  box.append(text, close);
+  document.body.prepend(box);
+}
+
 function collectLinks() {
   if (!extensionAlive()) return;
   chrome.storage.local.get(['scanPaused'], (v) => {
-    if (v.scanPaused) return;
+    // Re-check: this callback fires after an async round-trip, during which the extension can be
+    // reloaded out from under an already-open tab, invalidating this whole context.
+    if (!extensionAlive() || v.scanPaused) return;
+    linkifyTextNodes();
+    scanPageContent();
     const hostnames = new Set();
     for (const a of document.querySelectorAll('a[href]')) {
       if (a.dataset.scamshieldBadged) continue;
@@ -173,6 +269,9 @@ chrome.runtime.onMessage.addListener((msg) => {
       try { host = new URL(a.href).hostname; } catch { continue; }
       if (host === msg.hostname) applyError(a, msg.error);
     }
+  }
+  if (msg.type === 'EMAIL_SCAN_RESULT' && msg.id === pageContentScanId && levelOf(msg.result.score) !== 'safe') {
+    showPageContentBanner(msg.result);
   }
   if (msg.type === 'RESCAN') {
     seen.clear();

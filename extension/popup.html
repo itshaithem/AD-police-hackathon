@@ -18,6 +18,11 @@
   .controls label { font-size: 12px; display: flex; align-items: center; gap: 6px; }
   button { font: inherit; padding: 5px 10px; border-radius: 5px; border: 1px solid #556; background: #2a3042; color: #f2e9da; cursor: pointer; }
   a.opts { color: #9ab; font-size: 12px; display: block; padding: 0 14px 12px; }
+  .email-section { padding: 10px 14px 14px; border-top: 1px solid #333a4d; }
+  .email-section h2 { font-size: 12px; margin: 0 0 6px; opacity: .85; }
+  textarea#emailText { width: 100%; box-sizing: border-box; background: #222838; color: #f2e9da;
+    border: 1px solid #556; border-radius: 5px; padding: 6px; font: inherit; resize: vertical; }
+  #emailResult { margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -30,6 +35,12 @@
   <div class="controls">
     <label><input type="checkbox" id="pause"> Pause scanning</label>
     <button id="rescan">Rescan page</button>
+  </div>
+  <div class="email-section">
+    <h2>Paste email text to scan</h2>
+    <textarea id="emailText" rows="4" placeholder="Paste the email's subject and body here…"></textarea>
+    <button id="scanEmailBtn">Scan email</button>
+    <div id="emailResult"></div>
   </div>
   <a class="opts" href="#" id="openOptions">Settings</a>
   <script src="shared.js"></script>

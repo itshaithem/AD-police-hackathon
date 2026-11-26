@@ -18,6 +18,12 @@ class PlacesScanRequest(BaseModel):
     query: str = Field(min_length=2, max_length=200)
 
 
+class EmailScanRequest(BaseModel):
+    subject: str = Field(default="", max_length=500)
+    sender: str = Field(default="", max_length=320)
+    body: str = Field(min_length=1, max_length=20000)
+
+
 class WatchlistSave(BaseModel):
     """Either a pasted textarea blob or an array; split and validated in watchlist.validate()."""
     keywords: list[str] | str = ""

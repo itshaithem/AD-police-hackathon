@@ -68,6 +68,35 @@ function render(resp) {
   }
 }
 
+document.getElementById('scanEmailBtn').addEventListener('click', () => {
+  const body = document.getElementById('emailText').value.trim();
+  const resultEl = document.getElementById('emailResult');
+  if (!body) return;
+  resultEl.textContent = 'Scanning…';
+  chrome.runtime.sendMessage({ type: 'SCAN_EMAIL_PASTE', subject: '', sender: '', body }, (resp) => {
+    if (!resp) { resultEl.textContent = 'Extension error — try reloading the page.'; return; }
+    if (!resp.ok) { resultEl.textContent = `Could not scan: ${resp.error}`; return; }
+    const r = resp.result;
+    resultEl.textContent = '';
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.style.borderLeftColor = LEVEL_COLOR[levelOf(r.score)];
+    const score = document.createElement('div');
+    score.className = 'score';
+    score.style.color = LEVEL_COLOR[levelOf(r.score)];
+    score.textContent = `${r.score}/100 · ${VERDICT_LABEL[levelOf(r.score)]}`;
+    row.appendChild(score);
+    const reason = r.llm?.summary_en || r.reasons?.[0]?.reason_en;
+    if (reason) {
+      const reasonEl = document.createElement('div');
+      reasonEl.className = 'reason';
+      reasonEl.textContent = reason;
+      row.appendChild(reasonEl);
+    }
+    resultEl.appendChild(row);
+  });
+});
+
 function refresh() {
   activeTab((tab) => {
     chrome.runtime.sendMessage({ type: 'GET_TAB_FLAGS', tabId: tab.id }, render);

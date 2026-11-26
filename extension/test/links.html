@@ -14,4 +14,7 @@
   <li><button onclick="window.open('https://saqrbank-secure-login.test')">window.open button</button> (expect scam overlay, new tab only opens on "Open anyway")</li>
   <li><button onclick="location.href='https://google.com'">safe location.href button</button> (expect instant navigation, no overlay)</li>
 </ul>
+<h2>Plain-text URLs (no &lt;a&gt; tag, needs text-node linkify)</h2>
+<p>Someone posted a scam link in plain text: https://saqrbank-secure-login.test — expect it to become a clickable link with a red badge.</p>
+<p>And a safe one: https://google.com — expect no badge.</p>
 </body></html>

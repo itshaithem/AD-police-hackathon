@@ -108,9 +108,36 @@ function deliver(hostname, result, tabId) {
   }
 }
 
+// Email content scans (both Gmail auto-scan and the popup's paste box) go straight to the
+// backend, bypassing the link queue above — they're rarer and user/page-triggered, not a flood
+// of hostnames from one page load, so the extra concurrency bookkeeping isn't worth it here.
+async function fetchEmailScan(subject, sender, body) {
+  try {
+    const res = await fetch(`${settings.apiBase}/api/scan/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': settings.apiKey },
+      body: JSON.stringify({ subject, sender, body }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { ok: true, result: await res.json() };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'SCAN_LINKS' && sender.tab) {
     for (const hostname of msg.hostnames) enqueue(hostname, sender.tab.id);
+  }
+  if (msg.type === 'SCAN_EMAIL' && sender.tab) {
+    const tabId = sender.tab.id;
+    fetchEmailScan(msg.subject, msg.sender, msg.body).then((r) => {
+      if (r.ok) chrome.tabs.sendMessage(tabId, { type: 'EMAIL_SCAN_RESULT', id: msg.id, result: r.result }).catch(() => {});
+    });
+  }
+  if (msg.type === 'SCAN_EMAIL_PASTE') {
+    fetchEmailScan(msg.subject, msg.sender, msg.body).then(sendResponse);
+    return true; // keep the message channel open for the async sendResponse above
   }
   if (msg.type === 'GET_TAB_FLAGS') {
     sendResponse({
