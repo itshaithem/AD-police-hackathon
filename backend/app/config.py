@@ -19,11 +19,13 @@ SANDBOX_URL = env("SANDBOX_URL", "http://localhost:9000")
 OLLAMA_URL = env("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = env("OLLAMA_MODEL", "qwen3:4b")
 LLM_ENABLED = flag("LLM_ENABLED", "true")
-# AI analyst provider: "claude" (Anthropic API, vision) | "ollama" (local, on-premise) | "off"
+# AI analyst provider: "claude" (Anthropic API, vision) | "openai" (OpenAI API, vision) | "ollama" (local, on-premise) | "off"
 LLM_PROVIDER = env("LLM_PROVIDER", "ollama").strip().lower()
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = env("CLAUDE_MODEL", "claude-opus-5-5")
 CLAUDE_EFFORT = env("CLAUDE_EFFORT", "medium")  # low | medium | high | xhigh | max
+OPENAI_API_KEY = env("OPENAI_API_KEY", "")
+OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")
 VISUAL_ENABLED = flag("VISUAL_ENABLED", "true")
 AGENT_ENABLED = flag("AGENT_ENABLED")
 # The fake-victim agent only runs on these host suffixes (fictional demo sites / authorised targets).

@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ScamShield extension test</title></head>
+<body style="font:16px system-ui;margin:40px">
+<h1>ScamShield extension test page</h1>
+<ul>
+  <li><a id="safe" href="https://google.com">https://google.com</a> (expect no badge)</li>
+  <li><a id="scam" href="https://saqrbank-secure-login.test">https://saqrbank-secure-login.test</a> (expect red badge)</li>
+  <li><a id="short" href="https://bit.ly/3exampleShortLink">https://bit.ly/3exampleShortLink</a> (expect none or amber)</li>
+</ul>
+<h2>Buttons that navigate via JS (no &lt;a href&gt;, needs page-hook.js)</h2>
+<ul>
+  <li><button onclick="location.href='https://saqrbank-secure-login.test'">location.href button</button> (expect scam overlay, blocked until "Open anyway")</li>
+  <li><button onclick="location.assign('https://saqrbank-secure-login.test')">location.assign button</button> (expect scam overlay)</li>
+  <li><button onclick="window.open('https://saqrbank-secure-login.test')">window.open button</button> (expect scam overlay, new tab only opens on "Open anyway")</li>
+  <li><button onclick="location.href='https://google.com'">safe location.href button</button> (expect instant navigation, no overlay)</li>
+</ul>
+</body></html>

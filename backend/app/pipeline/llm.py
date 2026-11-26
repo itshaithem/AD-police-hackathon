@@ -1,7 +1,8 @@
 """AI analyst: reads the sandboxed page (screenshots + text) and returns a structured verdict in English and Arabic.
 
-Two providers, chosen with LLM_PROVIDER:
+Three providers, chosen with LLM_PROVIDER:
 - "claude": Anthropic Claude API (vision + structured outputs). Page text and screenshots are sent to Anthropic.
+- "openai": OpenAI API (vision + structured outputs). Page text and screenshots are sent to OpenAI.
 - "ollama": local model on the server's internal network; nothing leaves the server (text only).
 The result can only ADD risk in scoring (see scoring.py), so a page that talks the model into "safe" just loses the signal.
 """
@@ -16,14 +17,33 @@ from PIL import Image
 from pydantic import BaseModel
 
 from ..config import (ANTHROPIC_API_KEY, CLAUDE_EFFORT, CLAUDE_MODEL, LLM_ENABLED, LLM_PROVIDER, OLLAMA_MODEL,
-                      OLLAMA_URL)
+                      OLLAMA_URL, OPENAI_API_KEY, OPENAI_MODEL)
 
 log = logging.getLogger(__name__)
 
 # First Ollama call after a restart loads the model into memory, which can take minutes on CPU.
 OLLAMA_TIMEOUT = 240
 CLAUDE_TIMEOUT = 90
+OPENAI_TIMEOUT = 90
 SCREENSHOT_WIDTH = 480  # px; keeps image tokens low while forms and logos stay readable
+
+VERDICT_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "is_scam": {"type": "boolean"},
+        "confidence": {"type": "number"},
+        "impersonated_brand": {"type": ["string", "null"]},
+        "scam_type": {"type": "string",
+                      "enum": ["phishing", "fake_payment", "fake_support", "investment", "shopping", "none"]},
+        "intent": {"type": "string"},
+        "red_flags": {"type": "array", "items": {"type": "string"}},
+        "summary_en": {"type": "string"},
+        "summary_ar": {"type": "string"},
+    },
+    "required": ["is_scam", "confidence", "impersonated_brand", "scam_type", "intent", "red_flags",
+                 "summary_en", "summary_ar"],
+    "additionalProperties": False,
+}
 
 
 class Verdict(BaseModel):
@@ -123,6 +143,44 @@ async def _analyze_claude(url, official, content, screenshots):
     return out
 
 
+async def _analyze_openai(url, official, content, screenshots):
+    images = [{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{_jpeg_b64(s)}"}}
+              for s in screenshots]
+    body = {
+        "model": OPENAI_MODEL,
+        "max_tokens": 2000,
+        "messages": [
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": [*images, {"type": "text", "text": _page_text(url, official, content)}]},
+        ],
+        "response_format": {"type": "json_schema",
+                             "json_schema": {"name": "verdict", "strict": True, "schema": VERDICT_JSON_SCHEMA}},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=OPENAI_TIMEOUT) as c:
+            r = await c.post("https://api.openai.com/v1/chat/completions",
+                              headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}, json=body)
+        if r.status_code == 429:
+            return {"error": f"rate limited ({r.status_code})"}
+        r.raise_for_status()
+        data = r.json()
+    except httpx.HTTPStatusError as e:
+        log.warning("OpenAI API error %s: %s", e.response.status_code, e.response.text[:300])
+        return {"error": f"api error {e.response.status_code}"}
+    except httpx.HTTPError as e:
+        return {"error": f"cannot reach the OpenAI API ({type(e).__name__})"}
+
+    choice = data["choices"][0]
+    if choice.get("finish_reason") == "content_filter":
+        return {"error": "declined by model (content filter)"}
+    out = json.loads(choice["message"]["content"])
+    out["confidence"] = min(1.0, max(0.0, float(out["confidence"])))
+    out["provider"] = f"openai:{data.get('model', OPENAI_MODEL)}"
+    usage = data.get("usage") or {}
+    out["usage"] = {"input_tokens": usage.get("prompt_tokens"), "output_tokens": usage.get("completion_tokens")}
+    return out
+
+
 async def _analyze_ollama(url, official, content):
     prompt = (SYSTEM + "\n\n" + _page_text(url, official, content) +
               "\n\nReturn ONLY JSON with keys: is_scam, confidence, impersonated_brand, scam_type, intent, red_flags, "
@@ -143,7 +201,11 @@ async def _analyze_ollama(url, official, content):
 def enabled() -> bool:
     if not LLM_ENABLED or LLM_PROVIDER == "off":
         return False
-    return LLM_PROVIDER != "claude" or bool(ANTHROPIC_API_KEY)
+    if LLM_PROVIDER == "claude":
+        return bool(ANTHROPIC_API_KEY)
+    if LLM_PROVIDER == "openai":
+        return bool(OPENAI_API_KEY)
+    return True
 
 
 async def analyze(url, official, content, screenshots: list[str] | None = None):
@@ -152,13 +214,15 @@ async def analyze(url, official, content, screenshots: list[str] | None = None):
         return None
     if LLM_PROVIDER == "claude":
         return await _analyze_claude(url, official, content, (screenshots or [])[:2])
+    if LLM_PROVIDER == "openai":
+        return await _analyze_openai(url, official, content, (screenshots or [])[:2])
     return await _analyze_ollama(url, official, content)
 
 
 async def healthy() -> bool:
     if not enabled():
         return False
-    if LLM_PROVIDER == "claude":
+    if LLM_PROVIDER in ("claude", "openai"):
         return True  # key present; not calling the API on every health check
     try:
         async with httpx.AsyncClient(timeout=3) as c:

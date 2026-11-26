@@ -3,8 +3,8 @@
   "name": "ScamShield Link Scanner",
   "version": "0.1.0",
   "description": "Automatically scans links on any page for scam/fraud risk and warns before you open a dangerous one.",
-  "permissions": ["storage", "activeTab", "notifications"],
-  "optional_host_permissions": ["<all_urls>"],
+  "permissions": ["storage", "notifications"],
+  "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_icon": "icons/icon48.png" },
   "options_page": "options.html",
@@ -14,6 +14,12 @@
       "matches": ["<all_urls>"],
       "js": ["shared.js", "content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ]
 }

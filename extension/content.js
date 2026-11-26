@@ -1,34 +1,60 @@
 const seen = new Set(); // hostnames already sent for scanning from this page
 const resultsByHost = new Map(); // hostname -> last known scan result, for anchors added after the result arrived
+const errorsByHost = new Map(); // hostname -> last error message
+const pendingChecks = new Map(); // hostname -> resolver functions waiting on a scan (see waitForResult)
+
+// Reloading/updating the extension invalidates chrome.* APIs in any content script still attached
+// to an already-open tab — every call throws "Extension context invalidated" until that tab reloads.
+function extensionAlive() {
+  return !!(chrome.runtime && chrome.runtime.id);
+}
 
 function collectLinks() {
-  const hostnames = new Set();
-  for (const a of document.querySelectorAll('a[href]')) {
-    if (a.dataset.scamshieldBadged) continue;
-    let host;
-    try {
-      host = new URL(a.href).hostname;
-    } catch {
-      continue; // mailto:, tel:, javascript:, etc.
+  if (!extensionAlive()) return;
+  chrome.storage.local.get(['scanPaused'], (v) => {
+    if (v.scanPaused) return;
+    const hostnames = new Set();
+    for (const a of document.querySelectorAll('a[href]')) {
+      if (a.dataset.scamshieldBadged) continue;
+      let host;
+      try {
+        host = new URL(a.href).hostname;
+      } catch {
+        continue; // mailto:, tel:, javascript:, etc.
+      }
+      if (!host || host === location.hostname) continue;
+      const known = resultsByHost.get(host);
+      const err = errorsByHost.get(host);
+      if (known) applyResult(a, host, known);
+      else if (err) applyError(a, err);
+      else if (!seen.has(host)) {
+        seen.add(host);
+        hostnames.add(host);
+      }
     }
-    if (!host || host === location.hostname) continue;
-    const known = resultsByHost.get(host);
-    if (known) applyResult(a, host, known);
-    else if (!seen.has(host)) {
-      seen.add(host);
-      hostnames.add(host);
+    if (hostnames.size) {
+      try {
+        chrome.runtime.sendMessage({ type: 'SCAN_LINKS', hostnames: [...hostnames] });
+      } catch {
+        // stale content script (extension reloaded since this page loaded); dies until the tab reloads
+      }
     }
-  }
-  if (hostnames.size) chrome.runtime.sendMessage({ type: 'SCAN_LINKS', hostnames: [...hostnames] });
+  });
+}
+
+function pill(text, color, title) {
+  const span = document.createElement('span');
+  span.dataset.scamshieldBadge = '1';
+  span.textContent = text;
+  span.title = title || '';
+  span.style.cssText = `display:inline-block;margin-left:4px;padding:0 5px;border-radius:9px;
+    background:${color};color:#fff;font:bold 0.72em/1.5 system-ui,sans-serif;cursor:help;vertical-align:middle;`;
+  return span;
 }
 
 function badgeFor(result) {
-  const span = document.createElement('span');
   const lv = levelOf(result.score);
-  span.textContent = ` [${result.score}]`;
-  span.title = result.reasons?.[0]?.reason_en || '';
-  span.style.cssText = `color:${LEVEL_COLOR[lv]};font-weight:bold;font-size:0.85em;cursor:help;`;
-  return span;
+  return pill(`⚠ ${result.score}`, LEVEL_COLOR[lv], result.reasons?.[0]?.reason_en || '');
 }
 
 function showScamOverlay(score, reason, onContinue) {
@@ -71,20 +97,96 @@ function applyResult(a, hostname, result) {
   }
 }
 
+function applyError(a, error) {
+  if (a.dataset.scamshieldBadged) return;
+  a.dataset.scamshieldBadged = '1';
+  a.after(pill('?', '#555', `Could not scan this link: ${error}`));
+}
+
+// Resolves with the scan result for hostname, triggering a scan if one isn't already known/running.
+// Resolves with null (treat as "unknown, let it through") on error or after timeoutMs — a page-hook.js
+// navigation intercept must never hang forever waiting on a slow or dead backend.
+function waitForResult(hostname, timeoutMs) {
+  return new Promise((resolve) => {
+    const known = resultsByHost.get(hostname);
+    if (known) return resolve(known);
+    if (errorsByHost.has(hostname)) return resolve(null);
+    const list = pendingChecks.get(hostname) || [];
+    list.push(resolve);
+    pendingChecks.set(hostname, list);
+    setTimeout(() => resolve(null), timeoutMs);
+    if (!seen.has(hostname)) {
+      seen.add(hostname);
+      try {
+        chrome.runtime.sendMessage({ type: 'SCAN_LINKS', hostnames: [hostname] });
+      } catch {
+        resolve(null);
+      }
+    }
+  });
+}
+
+function settleChecks(hostname, result) {
+  const list = pendingChecks.get(hostname);
+  if (!list) return;
+  pendingChecks.delete(hostname);
+  list.forEach((resolve) => resolve(result));
+}
+
+// Bridge to page-hook.js, which runs in the page's own JS world (unlike this script) and therefore
+// sees in-page navigation (location.href=, location.assign/replace, window.open) a plain <a href>
+// scan can't catch — e.g. a <button onclick="location.href='...'"> instead of a real link.
+document.addEventListener('scamshield:check-nav', (e) => {
+  if (!extensionAlive()) return; // no ack -> page-hook.js fails open after its own short timeout
+  let id, hostname;
+  try { ({ id, hostname } = JSON.parse(e.detail)); } catch { return; }
+  if (!id || !hostname) return;
+  document.dispatchEvent(new CustomEvent(`scamshield:check-ack:${id}`));
+  const respond = (proceed) =>
+    document.dispatchEvent(new CustomEvent(`scamshield:decision:${id}`, { detail: JSON.stringify({ proceed }) }));
+  waitForResult(hostname, 4000).then((result) => {
+    if (result && result.verdict === 'scam') {
+      showScamOverlay(result.score, result.reasons?.[0]?.reason_en, () => respond(true));
+      // Cancel just closes the overlay without responding — navigation stays blocked, matching the
+      // existing <a> click-interception behavior below.
+    } else {
+      respond(true);
+    }
+  });
+});
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'SCAN_RESULT') {
     resultsByHost.set(msg.hostname, msg.result);
+    settleChecks(msg.hostname, msg.result);
     for (const a of document.querySelectorAll('a[href]')) {
       let host;
       try { host = new URL(a.href).hostname; } catch { continue; }
       if (host === msg.hostname) applyResult(a, host, msg.result);
     }
   }
+  if (msg.type === 'SCAN_ERROR') {
+    errorsByHost.set(msg.hostname, msg.error);
+    settleChecks(msg.hostname, null);
+    for (const a of document.querySelectorAll('a[href]')) {
+      let host;
+      try { host = new URL(a.href).hostname; } catch { continue; }
+      if (host === msg.hostname) applyError(a, msg.error);
+    }
+  }
+  if (msg.type === 'RESCAN') {
+    seen.clear();
+    document.querySelectorAll('[data-scamshield-badged]').forEach((a) => delete a.dataset.scamshieldBadged);
+    document.querySelectorAll('[data-scamshield-badge]').forEach((el) => el.remove());
+    collectLinks();
+  }
 });
 
 collectLinks();
 let debounce;
-new MutationObserver(() => {
+const observer = new MutationObserver(() => {
+  if (!extensionAlive()) { observer.disconnect(); return; }
   clearTimeout(debounce);
   debounce = setTimeout(collectLinks, 1500);
-}).observe(document.body, { childList: true, subtree: true });
+});
+observer.observe(document.body, { childList: true, subtree: true });

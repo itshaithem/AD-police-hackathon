@@ -3,27 +3,45 @@ importScripts('shared.js');
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const CONCURRENCY = 2;
 
-let settings = { apiBase: 'http://localhost:8000', apiKey: '' };
-chrome.storage.local.get(['apiBase', 'apiKey'], (v) => {
+// Local dev defaults — this points at the docker-compose backend's own API_KEY (backend/.env,
+// docker-compose.yml:39), so the extension scans with zero setup. Override the URL in Options
+// if you point this at a different backend; the key only needs changing if that one rotates.
+const DEFAULT_API_BASE = 'http://localhost:8000';
+const DEFAULT_API_KEY = 'chs7e9mVP0fxS6_c-3aaafclVrC7kbL5';
+
+let settings = { apiBase: DEFAULT_API_BASE, apiKey: DEFAULT_API_KEY };
+chrome.storage.local.get(['apiBase'], (v) => {
   if (v.apiBase) settings.apiBase = v.apiBase;
-  if (v.apiKey) settings.apiKey = v.apiKey;
 });
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.apiBase) settings.apiBase = changes.apiBase.newValue;
-  if (changes.apiKey) settings.apiKey = changes.apiKey.newValue;
+  if (changes.apiBase) settings.apiBase = changes.apiBase.newValue || DEFAULT_API_BASE;
 });
 
 // hostname -> { score, verdict, reasons, ts }
 const cache = new Map();
 // tabId -> array of { hostname, score, verdict, reasons } for flagged (suspicious/scam) links seen on that tab
 const flaggedPerTab = new Map();
+// tabId -> array of { hostname, error }
+const errorsPerTab = new Map();
+// tabId -> count of hostnames queued but not yet delivered
+const inFlightPerTab = new Map();
+// tabId -> total hostnames scanned (success + error), for the popup summary line
+const scannedPerTab = new Map();
 
 const queue = [];
 let active = 0;
 
 function enqueue(hostname, tabId) {
+  inFlightPerTab.set(tabId, (inFlightPerTab.get(tabId) || 0) + 1);
   queue.push({ hostname, tabId });
   pump();
+}
+
+function settled(tabId) {
+  const n = (inFlightPerTab.get(tabId) || 1) - 1;
+  if (n <= 0) inFlightPerTab.delete(tabId);
+  else inFlightPerTab.set(tabId, n);
+  scannedPerTab.set(tabId, (scannedPerTab.get(tabId) || 0) + 1);
 }
 
 function pump() {
@@ -43,10 +61,6 @@ async function scanOne(hostname, tabId) {
     deliver(hostname, cached, tabId);
     return;
   }
-  if (!settings.apiKey) {
-    chrome.tabs.sendMessage(tabId, { type: 'SCAN_ERROR', hostname, error: 'no API key set — open extension Options' }).catch(() => {});
-    return;
-  }
   try {
     const res = await fetch(`${settings.apiBase}/api/scan`, {
       method: 'POST',
@@ -59,11 +73,20 @@ async function scanOne(hostname, tabId) {
     cache.set(hostname, result);
     deliver(hostname, result, tabId);
   } catch (e) {
-    chrome.tabs.sendMessage(tabId, { type: 'SCAN_ERROR', hostname, error: String(e) }).catch(() => {});
+    reportError(hostname, String(e.message || e), tabId);
   }
 }
 
+function reportError(hostname, error, tabId) {
+  settled(tabId);
+  const list = errorsPerTab.get(tabId) || [];
+  list.push({ hostname, error });
+  errorsPerTab.set(tabId, list);
+  chrome.tabs.sendMessage(tabId, { type: 'SCAN_ERROR', hostname, error }).catch(() => {});
+}
+
 function deliver(hostname, result, tabId) {
+  settled(tabId);
   chrome.tabs.sendMessage(tabId, { type: 'SCAN_RESULT', hostname, result }).catch(() => {});
 
   if (result.verdict === 'suspicious' || result.verdict === 'scam') {
@@ -90,17 +113,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     for (const hostname of msg.hostnames) enqueue(hostname, sender.tab.id);
   }
   if (msg.type === 'GET_TAB_FLAGS') {
-    sendResponse({ flagged: flaggedPerTab.get(msg.tabId) || [] });
+    sendResponse({
+      flagged: flaggedPerTab.get(msg.tabId) || [],
+      errors: errorsPerTab.get(msg.tabId) || [],
+      inFlight: inFlightPerTab.get(msg.tabId) || 0,
+      scanned: scannedPerTab.get(msg.tabId) || 0,
+      apiBase: settings.apiBase,
+    });
   }
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => flaggedPerTab.delete(tabId));
+function clearTab(tabId) {
+  flaggedPerTab.delete(tabId);
+  errorsPerTab.delete(tabId);
+  inFlightPerTab.delete(tabId);
+  scannedPerTab.delete(tabId);
+}
 
-// Without this, flags and the badge count from the previous page survive a navigation in the
-// same tab — content.js re-scans the new page's links, but the old page's results never clear.
+chrome.tabs.onRemoved.addListener(clearTab);
+
+// Without this, flags/errors and the badge count from the previous page survive a navigation in
+// the same tab — content.js re-scans the new page's links, but the old page's results never clear.
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === 'loading') {
-    flaggedPerTab.delete(tabId);
+    clearTab(tabId);
     chrome.action.setBadgeText({ tabId, text: '' });
   }
 });
