@@ -10,6 +10,10 @@ class ScanRequest(BaseModel):
     fast: bool = False
 
 
+class DiscoveryToggle(BaseModel):
+    enabled: bool
+
+
 class PlacesScanRequest(BaseModel):
     query: str = Field(min_length=2, max_length=200)
 

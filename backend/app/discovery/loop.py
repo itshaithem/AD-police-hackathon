@@ -19,6 +19,18 @@ log = logging.getLogger(__name__)
 _running = asyncio.Lock()
 _sem = asyncio.Semaphore(SCAN_CONCURRENCY)
 last_run: dict = {}
+IDLE_CHECK_SEC = 15  # how often a paused loop re-checks whether it's been turned back on
+
+
+def is_enabled() -> bool:
+    """Runtime on/off for the background loop — separate from DISCOVERY_ENABLED, which controls
+    whether the loop task exists at all. Defaults on, persisted so a restart doesn't silently
+    re-enable something the user paused (e.g. overnight, to stop Places/dnstwist/crt.sh spend)."""
+    return db.kv_get("discovery_enabled", True)
+
+
+def set_enabled(v: bool):
+    db.kv_set("discovery_enabled", bool(v))
 
 
 def scan_queue(fresh: list[tuple[str, dict]], backlog: list[dict]) -> list[tuple[str, dict]]:
@@ -97,6 +109,9 @@ async def forever():
     period = DISCOVERY_INTERVAL_MIN * 60
     cycle = 0
     while True:
+        if not is_enabled():
+            await asyncio.sleep(IDLE_CHECK_SEC)
+            continue
         started = time.monotonic()
         try:
             # dnstwist runs every cycle but only over a rotating handful of official domains, so it
@@ -116,6 +131,13 @@ def demo():
     assert [i for i, _ in q] == ["a", "b", "c", "d"], q      # new first, backlog after, "b" not repeated
     assert scan_queue([], backlog) == [("b", backlog[0]), ("c", backlog[1]), ("d", backlog[2])]
     assert scan_queue(fresh, []) == fresh
+
+    # Runtime on/off: defaults on, persists, and a disabled loop must not run poller work.
+    set_enabled(False)
+    assert is_enabled() is False
+    set_enabled(True)
+    assert is_enabled() is True
+
     print("loop ok")
 
 

@@ -41,12 +41,17 @@ const en = {
   mapsClaimsYes: 'Yes — uses the brand name', mapsClaimsNo: 'No', mapsUsesBrand: 'Impersonates brand',
   mapsNothingWrong: 'Nothing wrong with this listing. It matches the official brand.',
   mapsChecking2: 'Checked listings', mapsImpersonating: 'Impersonating',
+  discoveryOn: 'Continuous monitoring on', discoveryOff: 'Continuous monitoring off — paused',
+  discoveryToggleOn: 'Pause', discoveryToggleOff: 'Resume',
   watchlist: 'Watchlist', wlSub: 'Keywords and official websites to hunt for. Saving starts a discovery pass.',
   wlKeywords: 'Keywords', wlSites: 'Official websites', wlKwHint: 'One per line — brand names, services, Arabic terms',
   wlSiteHint: 'One per line — the real sites, so look-alikes stand out', wlSave: 'Save and discover',
   wlSaving: 'Saving…', wlSaved: 'Saved — discovery started', wlRunning: 'Saved — discovery already running',
   wlEmpty: 'Nothing watched yet', wlTargets: 'targets', wlSkipped: 'Skipped', wlNoCt: 'No certificate monitoring (too short or non-Latin)',
   wlMapsOk: 'Maps discovery active', wlMapsNoKey: 'Maps discovery off — no Places API key',
+  wlMapsRateLimited: 'Maps discovery paused — temporarily throttled, retrying automatically',
+  mapsStatusInvalid: 'The Places API key was rejected', mapsStatusDisabled: 'The Places API is disabled for this key',
+  mapsStatusError: "Couldn't reach Google Maps just now — try again in a moment", mapsStatusIdle: 'Checking…',
   wlMapsBad: 'Maps discovery off — the Places key was rejected', wlMapsQuota: 'Maps discovery paused — Places quota reached',
   netSub: 'Scam domains linked by shared IP, phone number, registrar or page template. Select a cluster.', cluster: 'Cluster', linked: 'linked domains', shared: 'Shared indicators', domainsLabel: 'Domains', gen: 'Generate cluster report',
   legendLine: 'Lines: shared IP · phone · registrar · template', dragHint: 'Drag nodes · hover for domain · click to inspect',
@@ -88,12 +93,17 @@ const ar: Strings = {
   mapsClaimsYes: 'نعم — يستخدم اسم العلامة', mapsClaimsNo: 'لا', mapsUsesBrand: 'ينتحل العلامة',
   mapsNothingWrong: 'لا توجد مشكلة في هذه القائمة. تطابق العلامة الرسمية.',
   mapsChecking2: 'القوائم المفحوصة', mapsImpersonating: 'قوائم منتحِلة',
+  discoveryOn: 'الرصد المستمر يعمل', discoveryOff: 'الرصد المستمر متوقف — مؤقتًا',
+  discoveryToggleOn: 'إيقاف مؤقت', discoveryToggleOff: 'استئناف',
   watchlist: 'قائمة المراقبة', wlSub: 'كلمات مفتاحية ومواقع رسمية للبحث عن منتحليها. الحفظ يبدأ جولة رصد.',
   wlKeywords: 'الكلمات المفتاحية', wlSites: 'المواقع الرسمية', wlKwHint: 'كلمة في كل سطر — أسماء علامات أو خدمات أو مصطلحات عربية',
   wlSiteHint: 'موقع في كل سطر — المواقع الحقيقية، لتتضح النطاقات الشبيهة', wlSave: 'احفظ وابدأ الرصد',
   wlSaving: 'جارٍ الحفظ…', wlSaved: 'تم الحفظ — بدأ الرصد', wlRunning: 'تم الحفظ — الرصد جارٍ بالفعل',
   wlEmpty: 'لا توجد عناصر مراقبة بعد', wlTargets: 'عنصر مراقبة', wlSkipped: 'تم تجاهل', wlNoCt: 'بدون مراقبة شهادات (قصيرة جدًا أو غير لاتينية)',
   wlMapsOk: 'رصد الخرائط يعمل', wlMapsNoKey: 'رصد الخرائط متوقف — لا يوجد مفتاح Places',
+  wlMapsRateLimited: 'رصد الخرائط متوقف مؤقتًا — محدودية مؤقتة، تتم إعادة المحاولة تلقائيًا',
+  mapsStatusInvalid: 'تم رفض مفتاح Places API', mapsStatusDisabled: 'خدمة Places API غير مفعّلة لهذا المفتاح',
+  mapsStatusError: 'تعذّر الوصول إلى خرائط جوجل الآن — حاول مرة أخرى بعد قليل', mapsStatusIdle: 'جارٍ الفحص…',
   wlMapsBad: 'رصد الخرائط متوقف — تم رفض مفتاح Places', wlMapsQuota: 'رصد الخرائط متوقف مؤقتًا — تجاوز حصة Places',
   netSub: 'نطاقات احتيالية مترابطة عبر عنوان IP أو رقم هاتف أو جهة تسجيل أو قالب مشترك. اختر مجموعة.', cluster: 'مجموعة', linked: 'نطاقات مرتبطة', shared: 'مؤشرات مشتركة', domainsLabel: 'النطاقات', gen: 'إنشاء تقرير المجموعة',
   legendLine: 'الخطوط: IP · هاتف · جهة تسجيل · قالب مشترك', dragHint: 'اسحب العُقد · مرّر للاطلاع على النطاق · انقر للتفاصيل',
@@ -292,6 +302,15 @@ export type Level = 'scam' | 'sus' | 'safe';
 export const LEVEL_COLOR: Record<Level, string> = { scam: '#C8442F', sus: '#C99A2E', safe: '#6B8E5A' };
 // Matches the backend's SCAM_AT (pipeline/scoring.py): "high risk" and the "scam" verdict
 // must mean the same thing, or a row reads 'scam' while the UI paints it amber.
+/** One honest message per Places failure mode, shared by the watchlist panel and the Maps scan tab. */
+export function placesStatusText(state: string | undefined, t: Strings): string {
+  const map: Partial<Record<string, string>> = {
+    ok: t.wlMapsOk, no_key: t.wlMapsNoKey, quota: t.wlMapsQuota, rate_limited: t.wlMapsRateLimited,
+    invalid_key: t.mapsStatusInvalid, disabled: t.mapsStatusDisabled, error: t.mapsStatusError, idle: t.mapsStatusIdle,
+  };
+  return map[state ?? 'idle'] ?? t.mapsStatusError;
+}
+
 export const HIGH_RISK_THRESHOLD = 70;
 export const levelOf = (score: number, threshold = HIGH_RISK_THRESHOLD): Level =>
   score >= threshold ? 'scam' : score >= 40 ? 'sus' : 'safe';

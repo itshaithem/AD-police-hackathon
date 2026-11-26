@@ -3,13 +3,14 @@
 One search+assess path serves two callers: the background discovery poll, and the on-demand
 "Maps listing" scan in the dashboard (POST /api/scan/places).
 """
+import asyncio
 import json
 import re
 
 import httpx
 
 from .. import db, watchlist
-from ..config import GOOGLE_PLACES_KEY
+from ..config import GOOGLE_PLACES_KEY, MAPS_PER_CYCLE
 from ..db import now
 from ..pipeline.scoring import SCAM_AT, SUSPICIOUS_AT
 from ..pipeline.url_features import BRANDS, extract, registered_domain
@@ -21,7 +22,26 @@ URL = "https://places.googleapis.com/v1/places:searchText"
 # Why Maps discovery is or isn't producing anything — surfaced on /health and the watchlist panel,
 # so a rejected key doesn't look identical to "no fake listings found".
 last_status = {"state": "no_key" if not GOOGLE_PLACES_KEY else "idle", "detail": None, "at": None}
-_STATES = {401: "invalid_key", 403: "disabled", 429: "quota"}
+
+# Google overloads 403 for several different reasons: a genuinely disabled API or billing account
+# (permanent — stop asking), and transient per-key throttling that clears within seconds (observed
+# directly: the same key flipped 403 -> 200 -> 403 across a single session). The HTTP code alone
+# can't tell these apart; the error body's `status`/`reason` fields can.
+_PERMANENT_REASONS = {"SERVICE_DISABLED", "API_KEY_SERVICE_BLOCKED", "PERMISSION_DENIED",
+                      "API_KEY_INVALID", "API_KEY_HTTP_REFERRER_BLOCKED", "API_KEY_IP_ADDRESS_BLOCKED"}
+_RETRIES = 2
+
+
+def _classify(status_code: int, body: dict) -> str:
+    err = body.get("error") or {}
+    reason = next((d.get("reason") for d in err.get("details", []) if d.get("reason")), None)
+    if status_code == 401:
+        return "invalid_key"
+    if status_code == 429 or reason in ("RESOURCE_EXHAUSTED", "RATE_LIMIT_EXCEEDED"):
+        return "quota"
+    if status_code == 403:
+        return "disabled" if (reason in _PERMANENT_REASONS or not reason) else "rate_limited"
+    return "error"
 
 
 def _set(state, detail=None):
@@ -129,20 +149,34 @@ def assess(p: dict, b: dict | None) -> dict:
 
 
 async def search(c: httpx.AsyncClient, query: str, b: dict | None) -> list[dict] | None:
-    """One Places text search, each result assessed. None means the call failed (see last_status)."""
-    try:
-        r = await c.post(URL, headers={"X-Goog-Api-Key": GOOGLE_PLACES_KEY, "X-Goog-FieldMask": FIELDS},
-                         json={"textQuery": query, "regionCode": "AE", "languageCode": "en"})
-    except Exception as e:
-        _set("error", str(e)[:120])  # one transient timeout shouldn't abort the whole pass
+    """One Places text search, each result assessed. None means the call failed (see last_status).
+
+    Retries a 403/5xx a couple of times before giving up: a transient per-key throttle (observed
+    recovering within minutes) looks identical to a real one on the first response.
+    """
+    last_exc = None
+    for attempt in range(_RETRIES + 1):
+        try:
+            r = await c.post(URL, headers={"X-Goog-Api-Key": GOOGLE_PLACES_KEY, "X-Goog-FieldMask": FIELDS},
+                             json={"textQuery": query, "regionCode": "AE", "languageCode": "en"})
+        except Exception as e:
+            last_exc = e
+            await asyncio.sleep(1.5)
+            continue
+        if r.status_code == 200:
+            _set("ok")
+            return [assess(p, b) for p in r.json().get("places", [])]
+        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        state = _classify(r.status_code, body)
+        err = body.get("error") or {}
+        detail = f"{r.status_code} {err.get('status') or err.get('message') or r.reason_phrase}".strip()
+        if state == "rate_limited" and attempt < _RETRIES:
+            await asyncio.sleep(2 * (attempt + 1))
+            continue
+        _set(state, detail)
         return None
-    if r.status_code != 200:
-        err = (r.json().get("error") or {}) if r.headers.get("content-type", "").startswith("application/json") else {}
-        _set(_STATES.get(r.status_code, "error"),
-             f"{r.status_code} {err.get('status') or err.get('message') or r.reason_phrase}".strip())
-        return None
-    _set("ok")
-    return [assess(p, b) for p in r.json().get("places", [])]
+    _set("error", str(last_exc)[:120] if last_exc else "request failed")
+    return None
 
 
 # Fictional listings for the fictional Saqr Bank, so the Maps check can be demonstrated without
@@ -215,15 +249,17 @@ async def poll():
         _set("no_key")
         return []
     out = []
+    # Built-ins rotate here (unlike the other pollers, which exempt them); watchlist brands were
+    # already gated by watchlist.polls(). Every brand every cycle was the actual cost driver.
+    brands = [b for b in BRANDS if b["id"] != "saqrbank" and (b.get("wl") is None or watchlist.polls(b))]
+    todo = db.slice_by_cursor(brands, "maps_cursor", MAPS_PER_CYCLE)
     async with httpx.AsyncClient(timeout=20) as c:
-        for b in BRANDS:
-            if b["id"] == "saqrbank" or not watchlist.polls(b):
-                continue
+        for b in todo:
             for q in (f"{b['name']['en']} customer service", f"{b['name']['en']} branch Abu Dhabi"):
                 found = await search(c, q, b)
                 if found is None:
-                    if last_status["state"] in ("invalid_key", "disabled", "quota"):
-                        return out  # a bad key fails every query alike: stop, don't hammer it per brand
+                    if last_status["state"] in ("invalid_key", "disabled", "quota", "rate_limited"):
+                        return out  # already retried internally; more queries would just make it worse
                     continue
                 for p in found:
                     if p["flags"] and p["claims_brand"]:
@@ -282,8 +318,29 @@ def demo():
     clean = assess(DEMO_PLACES[-1], saqr)
     assert listing_scan(clean, saqr, "q")["verdict"] == "safe"
 
+    # A real 403 is overloaded by Google — only an explicit permanent reason (or none at all,
+    # which is what a disabled API/billing returns) should stop retrying; anything else is transient.
+    assert _classify(401, {}) == "invalid_key"
+    assert _classify(429, {}) == "quota"
+    assert _classify(403, {"error": {"details": [{"reason": "SERVICE_DISABLED"}]}}) == "disabled"
+    assert _classify(403, {"error": {"details": [{"reason": "API_KEY_INVALID"}]}}) == "disabled"
+    assert _classify(403, {}) == "disabled"                                    # no reason at all
+    assert _classify(403, {"error": {"details": [{"reason": "SOMETHING_ELSE"}]}}) == "rate_limited"
+    assert _classify(403, {"error": {"details": [{"reason": "RESOURCE_EXHAUSTED"}]}}) == "quota"
+    assert _classify(500, {}) == "error"
+
+    # Maps rotation: built-ins are capped per cycle like every other poller, not queried unconditionally.
+    db._exec("DELETE FROM kv WHERE k=?", ("maps_cursor",))
+    builtins = [b for b in BRANDS if b["id"] != "saqrbank" and not b.get("wl")]
+    seen = set()
+    for _ in range(-(-len(builtins) // max(1, MAPS_PER_CYCLE))):
+        seen |= {b["id"] for b in db.slice_by_cursor(builtins, "maps_cursor", MAPS_PER_CYCLE)}
+    assert seen == {b["id"] for b in builtins}, (len(seen), len(builtins))  # every brand reached, nothing skipped
+    db._exec("DELETE FROM kv WHERE k=?", ("maps_cursor",))
+
     print("maps ok")
 
 
 if __name__ == "__main__":
     demo()
+

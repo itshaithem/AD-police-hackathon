@@ -1,4 +1,4 @@
-import { HIGH_RISK_THRESHOLD, L, T, colorOf, type Filter } from '../data';
+import { HIGH_RISK_THRESHOLD, L, T, colorOf, placesStatusText, type Filter } from '../data';
 import type { Dashboard } from '../useDashboard';
 
 function Watchlist({ dash }: { dash: Dashboard }) {
@@ -7,9 +7,7 @@ function Watchlist({ dash }: { dash: Dashboard }) {
   const count = s.wlKeywords.split('\n').filter((x) => x.trim()).length;
   const max = w?.max_entries ?? 200;
   const over = count > max;
-  // Anything else (invalid_key, disabled, error) reads as "the key was rejected".
-  const mapsText: Partial<Record<string, string>> = { ok: t.wlMapsOk, no_key: t.wlMapsNoKey, quota: t.wlMapsQuota, idle: '' };
-  const maps = mapsText[w?.places.state ?? 'idle'] ?? t.wlMapsBad;
+  const maps = w ? placesStatusText(w.places.state, t) : '';
 
   return (
     <details className="card watchlist" open={s.wlOpen} onToggle={(e) => set({ wlOpen: e.currentTarget.open })}>
@@ -48,7 +46,7 @@ function Watchlist({ dash }: { dash: Dashboard }) {
 }
 
 export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
-  const { state: s, set, runScan, openScan, findings } = dash;
+  const { state: s, set, runScan, openScan, findings, toggleDiscovery } = dash;
   const t = T[s.lang], ar = s.lang === 'ar', wide = !s.narrow;
 
   const ago = (m: number) => {
@@ -75,15 +73,25 @@ export default function DiscoveryScreen({ dash }: { dash: Dashboard }) {
   ];
   const tabs: [Filter, string][] = [['all', t.all], ['web', t.websites], ['maps', t.maps], ['high', t.highRisk]];
 
+  const on = s.discoveryEnabled;
+
   return (
     <div className="discovery">
       <div className="page-head">
         <h1>{t.discovery}</h1>
         <p>{t.discSub}</p>
-        <span className="live">
-          <span className="dot" style={{ opacity: Math.floor(s.now / 1000) % 2 ? 1 : 0.35 }} />
-          {t.liveLabel}
-        </span>
+        <div className="live-row">
+          <span className="live">
+            <span className="dot" style={{ opacity: on === false ? 0.25 : Math.floor(s.now / 1000) % 2 ? 1 : 0.35 }} />
+            {on === false ? t.discoveryOff : t.liveLabel}
+          </span>
+          {s.online && on !== null && (
+            <button type="button" className="btn btn-secondary" disabled={s.discoveryBusy}
+                    onClick={() => { void toggleDiscovery(); }}>
+              {s.discoveryBusy ? t.working : on ? t.discoveryToggleOn : t.discoveryToggleOff}
+            </button>
+          )}
+        </div>
       </div>
 
       {s.online && <Watchlist dash={dash} />}
